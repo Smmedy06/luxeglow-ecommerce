@@ -76,7 +76,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
           setError('Failed to create account');
         }
       }
-    } catch (error) {
+    } catch {
       setError('An error occurred. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -93,7 +93,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
       } else {
         setError('Failed to sign in with Google');
       }
-    } catch (error) {
+    } catch {
       setError('An error occurred with Google sign-in');
     } finally {
       setIsSubmitting(false);

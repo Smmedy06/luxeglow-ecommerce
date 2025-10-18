@@ -18,7 +18,7 @@ export default function AboutPage() {
                Natural Beauty
              </h1>
              <p className="text-base md:text-lg text-[#6b5d52] leading-relaxed max-w-3xl mx-auto">
-               We believe that everyone deserves skincare that works. That's why we've dedicated ourselves to creating premium, science-backed formulations using only the finest natural ingredients.
+               We believe that everyone deserves skincare that works. That&apos;s why we&apos;ve dedicated ourselves to creating premium, science-backed formulations using only the finest natural ingredients.
              </p>
            </div>
          </section>
@@ -34,7 +34,7 @@ export default function AboutPage() {
                 </h2>
                 <div className="space-y-4 text-[#6b5d52] leading-relaxed">
                   <p>
-                    LuxeGlow was born from a simple belief: skincare should be effective, transparent, and sustainable. Our founder, a biochemist with over 15 years of experience in cosmetic science, was frustrated by the industry's reliance on harsh chemicals and empty marketing promises.
+                    LuxeGlow was born from a simple belief: skincare should be effective, transparent, and sustainable. Our founder, a biochemist with over 15 years of experience in cosmetic science, was frustrated by the industry&apos;s reliance on harsh chemicals and empty marketing promises.
                   </p>
                   <p>
                     In 2020, we launched with a mission to create premium skincare products that combine cutting-edge science with the power of natural ingredients. Every formula is meticulously crafted in our state-of-the-art laboratory, tested for efficacy, and packaged with care for our planet.
@@ -150,7 +150,7 @@ export default function AboutPage() {
                   Sustainability at Our Core
                 </h2>
                 <p className="text-lg text-[#6b5d52] leading-relaxed">
-                  We're committed to reducing our environmental impact. All our packaging is recyclable or biodegradable, and we're constantly working to minimize waste throughout our supply chain.
+                  We&apos;re committed to reducing our environmental impact. All our packaging is recyclable or biodegradable, and we&apos;re constantly working to minimize waste throughout our supply chain.
                 </p>
                 
                 <div className="space-y-4">
@@ -235,7 +235,7 @@ export default function AboutPage() {
                 <h3 className="text-xl font-semibold text-[#2c2520]">Marcus Rodriguez</h3>
                 <p className="text-[#ba9157] font-medium">Head of Formulation</p>
                 <p className="text-[#6b5d52] text-sm">
-                  Master's in Organic Chemistry. Specializes in natural ingredient extraction and formulation.
+                  Master&apos;s in Organic Chemistry. Specializes in natural ingredient extraction and formulation.
                 </p>
               </div>
 

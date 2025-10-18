@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import AuthModal from '@/components/AuthModal';
@@ -169,7 +168,7 @@ export default function BecomeVendorPage() {
                     </li>
                     <li className="flex items-start">
                       <span className="w-2 h-2 bg-[#ba9157] rounded-full mt-2 mr-3 flex-shrink-0"></span>
-                      Once approved, you'll receive vendor dashboard access
+                      Once approved, you&apos;ll receive vendor dashboard access
                     </li>
                   </ul>
                 </div>

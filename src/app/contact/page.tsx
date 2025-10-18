@@ -38,7 +38,7 @@ export default function ContactPage() {
               GET IN TOUCH
             </p>
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-semibold text-[#2c2520] mb-6 leading-tight">
-              We'd Love to Hear From You
+              We&apos;d Love to Hear From You
             </h1>
             <p className="text-base md:text-lg text-[#6b5d52] leading-relaxed max-w-3xl mx-auto">
               Have a question about our products or need skincare advice? Our team is here to help.
@@ -143,7 +143,7 @@ export default function ContactPage() {
                   Send Us a Message
                 </h2>
                 <p className="text-[#6b5d52] mb-8">
-                  Fill out the form below and we'll get back to you as soon as possible.
+                  Fill out the form below and we&apos;ll get back to you as soon as possible.
                 </p>
                 
                 <form onSubmit={handleSubmit} className="space-y-6">
@@ -242,7 +242,7 @@ export default function ContactPage() {
               <div className="text-center">
                 <h3 className="text-xl font-semibold text-[#2c2520] mb-4">Always Here</h3>
                 <p className="text-[#6b5d52] leading-relaxed">
-                  Email us anytime and we'll get back to you during business hours.
+                  Email us anytime and we&apos;ll get back to you during business hours.
                 </p>
               </div>
             </div>

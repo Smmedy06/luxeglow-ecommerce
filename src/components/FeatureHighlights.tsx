@@ -1,5 +1,7 @@
+import React from 'react';
+
 interface Feature {
-  icon: JSX.Element;
+  icon: React.ReactElement;
   title: string;
   description: string;
 }
