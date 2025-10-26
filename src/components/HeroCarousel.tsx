@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 interface HeroSlide {
   id: number;
@@ -12,6 +13,7 @@ interface HeroSlide {
   secondaryButton: string;
   primaryButtonLink: string;
   secondaryButtonLink: string;
+  image?: string;
   stats: {
     number: string;
     label: string;
@@ -28,6 +30,7 @@ const heroSlides: HeroSlide[] = [
     secondaryButton: "Learn More",
     primaryButtonLink: "/shop?filter=bestsellers",
     secondaryButtonLink: "/about",
+    image: "/images/hero-img1.webp",
     stats: [
       { number: "500+", label: "Happy Clients" },
       { number: "100%", label: "Natural" }
@@ -42,6 +45,7 @@ const heroSlides: HeroSlide[] = [
     secondaryButton: "Book Consultation",
     primaryButtonLink: "/shop?filter=treatments",
     secondaryButtonLink: "/contact",
+    image: "/images/hero img 2.jpeg",
     stats: [
       { number: "10+", label: "Years Experience" },
       { number: "98%", label: "Satisfaction" }
@@ -56,6 +60,7 @@ const heroSlides: HeroSlide[] = [
     secondaryButton: "Our Story",
     primaryButtonLink: "/shop",
     secondaryButtonLink: "/about",
+    image: "/images/hero-img3.webp",
     stats: [
       { number: "50+", label: "Products" },
       { number: "0%", label: "Harmful Chemicals" }
@@ -147,16 +152,28 @@ export default function HeroCarousel() {
             </div>
           </div>
 
-          {/* Right Content - Image Placeholder */}
+          {/* Right Content - Image */}
           <div className="relative">
-            <div className="bg-gray-300 rounded-lg h-96 lg:h-[500px] flex items-center justify-center">
-              <div className="text-center text-gray-500">
-                <svg className="w-16 h-16 mx-auto mb-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-                </svg>
-                <p className="text-sm">Hero Image {currentSlide + 1}</p>
+            {currentSlideData.image ? (
+              <div className="relative rounded-lg h-96 lg:h-[500px] overflow-hidden">
+                <Image
+                  src={currentSlideData.image}
+                  alt={currentSlideData.title}
+                  fill
+                  className="object-cover"
+                  priority={currentSlide === 0}
+                />
               </div>
-            </div>
+            ) : (
+              <div className="bg-gray-300 rounded-lg h-96 lg:h-[500px] flex items-center justify-center">
+                <div className="text-center text-gray-500">
+                  <svg className="w-16 h-16 mx-auto mb-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                  </svg>
+                  <p className="text-sm">Hero Image {currentSlide + 1}</p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

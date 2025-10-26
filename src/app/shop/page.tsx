@@ -11,14 +11,17 @@ interface Product {
   price: string;
   category: string;
   image: string;
+  description?: string;
+  inStock?: boolean;
+  stockCount?: number;
 }
 
 const products: Product[] = [
-  { id: 1, brand: "ALLERGAN", name: "Juvederm Ultra 3", price: "£107.99", category: "Dermal Fillers", image: "product-1" },
-  { id: 2, brand: "ALLERGAN", name: "Juvederm Voluma", price: "£143.99", category: "Dermal Fillers", image: "product-2" },
-  { id: 3, brand: "GALDERMA", name: "Restylane Kysse", price: "£113.99", category: "Dermal Fillers", image: "product-3" },
-  { id: 4, brand: "ALLERGAN", name: "Botox 100 Units", price: "£191.99", category: "Anti-Wrinkle Injections", image: "product-4" },
-  { id: 5, brand: "GALDERMA", name: "Dysport 300 Units", price: "£167.99", category: "Anti-Wrinkle Injections", image: "product-5" },
+  { id: 1, brand: "ALLERGAN", name: "Juvederm Ultra 3", price: "£107.99", category: "Dermal Fillers", image: "product-1", inStock: true, stockCount: 15 },
+  { id: 2, brand: "ALLERGAN", name: "Juvederm Voluma", price: "£143.99", category: "Dermal Fillers", image: "product-2", inStock: true, stockCount: 8 },
+  { id: 3, brand: "GALDERMA", name: "Restylane Kysse", price: "£113.99", category: "Dermal Fillers", image: "product-3", inStock: false, stockCount: 0 },
+  { id: 4, brand: "ALLERGAN", name: "Botox 100 Units", price: "£191.99", category: "Anti-Wrinkle Injections", image: "product-4", inStock: true, stockCount: 12 },
+  { id: 5, brand: "GALDERMA", name: "Dysport 300 Units", price: "£167.99", category: "Anti-Wrinkle Injections", image: "product-5", inStock: true, stockCount: 6 },
   { id: 6, brand: "GALDERMA", name: "Azzalure 125 Units", price: "£149.99", category: "Anti-Wrinkle Injections", image: "product-6" },
   { id: 7, brand: "TEOSYAL", name: "Teosyal RHA 2", price: "£125.99", category: "Dermal Fillers", image: "product-7" },
   { id: 8, brand: "MERZ", name: "Belotero Balance", price: "£101.99", category: "Dermal Fillers", image: "product-8" },
@@ -233,17 +236,45 @@ export default function ShopPage() {
                   <h3 className="text-lg font-semibold text-[#2c2520] mb-4">Price Range</h3>
                   <div className="space-y-4">
                     <div className="relative">
-                      <input
-                        type="range"
-                        min="0"
-                        max="300"
-                        value={priceRange[1]}
-                        onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value)])}
-                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-                        style={{
-                          background: `linear-gradient(to right, #ba9157 0%, #ba9157 ${(priceRange[1] / 300) * 100}%, #e5e7eb ${(priceRange[1] / 300) * 100}%, #e5e7eb 100%)`
+                      <div className="relative h-2 bg-gray-200 rounded-lg">
+                        <div 
+                          className="absolute h-2 bg-[#ba9157] rounded-lg"
+                          style={{
+                            left: `${(priceRange[0] / 300) * 100}%`,
+                            width: `${((priceRange[1] - priceRange[0]) / 300) * 100}%`
+                          }}
+                        ></div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="300"
+                          value={priceRange[0]}
+                        onChange={(e) => {
+                          const newMin = parseInt(e.target.value);
+                          if (newMin < priceRange[1]) {
+                            setPriceRange([newMin, priceRange[1]]);
+                            setCurrentPage(1);
+                          }
                         }}
-                      />
+                          className="absolute w-full h-2 bg-transparent appearance-none cursor-pointer slider-thumb"
+                          style={{ zIndex: 2 }}
+                        />
+                        <input
+                          type="range"
+                          min="0"
+                          max="300"
+                          value={priceRange[1]}
+                        onChange={(e) => {
+                          const newMax = parseInt(e.target.value);
+                          if (newMax > priceRange[0]) {
+                            setPriceRange([priceRange[0], newMax]);
+                            setCurrentPage(1);
+                          }
+                        }}
+                          className="absolute w-full h-2 bg-transparent appearance-none cursor-pointer slider-thumb"
+                          style={{ zIndex: 3 }}
+                        />
+                      </div>
                     </div>
                     <div className="flex justify-between text-sm text-[#6b5d52]">
                       <span>£{priceRange[0]}</span>
@@ -255,7 +286,13 @@ export default function ShopPage() {
                         min="0"
                         max="300"
                         value={priceRange[0]}
-                        onChange={(e) => setPriceRange([parseInt(e.target.value) || 0, priceRange[1]])}
+                        onChange={(e) => {
+                          const newMin = parseInt(e.target.value) || 0;
+                          if (newMin <= priceRange[1]) {
+                            setPriceRange([newMin, priceRange[1]]);
+                            setCurrentPage(1);
+                          }
+                        }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#ba9157]"
                         placeholder="Min"
                       />
@@ -264,7 +301,13 @@ export default function ShopPage() {
                         min="0"
                         max="300"
                         value={priceRange[1]}
-                        onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value) || 300])}
+                        onChange={(e) => {
+                          const newMax = parseInt(e.target.value) || 300;
+                          if (newMax >= priceRange[0]) {
+                            setPriceRange([priceRange[0], newMax]);
+                            setCurrentPage(1);
+                          }
+                        }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#ba9157]"
                         placeholder="Max"
                       />
@@ -316,17 +359,45 @@ export default function ShopPage() {
                 <h3 className="text-lg font-semibold text-[#2c2520] mb-4">Price Range</h3>
                 <div className="space-y-4">
                   <div className="relative">
-                    <input
-                      type="range"
-                      min="0"
-                      max="300"
-                      value={priceRange[1]}
-                      onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value)])}
-                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-                      style={{
-                        background: `linear-gradient(to right, #ba9157 0%, #ba9157 ${(priceRange[1] / 300) * 100}%, #e5e7eb ${(priceRange[1] / 300) * 100}%, #e5e7eb 100%)`
-                      }}
-                    />
+                    <div className="relative h-2 bg-gray-200 rounded-lg">
+                      <div 
+                        className="absolute h-2 bg-[#ba9157] rounded-lg"
+                        style={{
+                          left: `${(priceRange[0] / 300) * 100}%`,
+                          width: `${((priceRange[1] - priceRange[0]) / 300) * 100}%`
+                        }}
+                      ></div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="300"
+                        value={priceRange[0]}
+                        onChange={(e) => {
+                          const newMin = parseInt(e.target.value);
+                          if (newMin < priceRange[1]) {
+                            setPriceRange([newMin, priceRange[1]]);
+                            setCurrentPage(1);
+                          }
+                        }}
+                        className="absolute w-full h-2 bg-transparent appearance-none cursor-pointer slider-thumb"
+                        style={{ zIndex: 2 }}
+                      />
+                      <input
+                        type="range"
+                        min="0"
+                        max="300"
+                        value={priceRange[1]}
+                        onChange={(e) => {
+                          const newMax = parseInt(e.target.value);
+                          if (newMax > priceRange[0]) {
+                            setPriceRange([priceRange[0], newMax]);
+                            setCurrentPage(1);
+                          }
+                        }}
+                        className="absolute w-full h-2 bg-transparent appearance-none cursor-pointer slider-thumb"
+                        style={{ zIndex: 3 }}
+                      />
+                    </div>
                   </div>
                   <div className="flex justify-between text-sm text-[#6b5d52]">
                     <span>£{priceRange[0]}</span>
@@ -338,7 +409,13 @@ export default function ShopPage() {
                       min="0"
                       max="300"
                       value={priceRange[0]}
-                      onChange={(e) => setPriceRange([parseInt(e.target.value) || 0, priceRange[1]])}
+                      onChange={(e) => {
+                        const newMin = parseInt(e.target.value) || 0;
+                        if (newMin <= priceRange[1]) {
+                          setPriceRange([newMin, priceRange[1]]);
+                          setCurrentPage(1);
+                        }
+                      }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#ba9157]"
                       placeholder="Min"
                     />
@@ -347,7 +424,13 @@ export default function ShopPage() {
                       min="0"
                       max="300"
                       value={priceRange[1]}
-                      onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value) || 300])}
+                      onChange={(e) => {
+                        const newMax = parseInt(e.target.value) || 300;
+                        if (newMax >= priceRange[0]) {
+                          setPriceRange([priceRange[0], newMax]);
+                          setCurrentPage(1);
+                        }
+                      }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#ba9157]"
                       placeholder="Max"
                     />
@@ -425,9 +508,32 @@ export default function ShopPage() {
                     <p className="text-xl font-bold text-[#2c2520]">
                       {product.price}
                     </p>
-                    <button className="w-full border border-[#2c2520] text-[#2c2520] py-2 px-4 rounded-lg font-medium hover:bg-[#2c2520] hover:text-white transition-colors">
+                    
+                    {/* Stock Status */}
+                    {product.inStock !== undefined && (
+                      <div className="flex items-center space-x-2">
+                        {product.inStock ? (
+                          <>
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span className="text-green-600 text-sm font-medium">
+                              In Stock {product.stockCount && `(${product.stockCount})`}
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                            <span className="text-red-600 text-sm font-medium">Out of Stock</span>
+                          </>
+                        )}
+                      </div>
+                    )}
+                    
+                    <a 
+                      href={`/products/${product.id}`}
+                      className="w-full border border-[#2c2520] text-[#2c2520] py-2 px-4 rounded-lg font-medium hover:bg-[#2c2520] hover:text-white transition-colors inline-block text-center"
+                    >
                       View Details
-                    </button>
+                    </a>
                   </div>
                 </div>
               ))}
