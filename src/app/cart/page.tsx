@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useCart } from '@/contexts/CartContext';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -81,13 +82,13 @@ export default function CartPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
               <h1 className="text-3xl font-bold text-[#2c2520] mb-4">Your Cart is Empty</h1>
-              <p className="text-[#6b5d52] mb-8">Looks like you haven't added any items to your cart yet.</p>
-              <a 
+              <p className="text-[#6b5d52] mb-8">Looks like you haven&apos;t added any items to your cart yet.</p>
+              <Link 
                 href="/shop" 
                 className="inline-block bg-[#ba9157] text-white px-6 py-3 rounded-lg font-medium hover:bg-[#a67d4a] transition-colors"
               >
                 Continue Shopping
-              </a>
+              </Link>
             </div>
           </div>
         </main>
@@ -104,9 +105,9 @@ export default function CartPage() {
         {/* Breadcrumb */}
         <nav className="mb-8">
           <ol className="flex items-center space-x-2 text-sm text-[#6b5d52]">
-            <li><a href="/" className="hover:text-[#ba9157]">Home</a></li>
+            <li><Link href="/" className="hover:text-[#ba9157]">Home</Link></li>
             <li>/</li>
-            <li><a href="/shop" className="hover:text-[#ba9157]">Shop</a></li>
+            <li><Link href="/shop" className="hover:text-[#ba9157]">Shop</Link></li>
             <li>/</li>
             <li className="text-[#2c2520] font-medium">Cart</li>
           </ol>

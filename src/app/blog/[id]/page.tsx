@@ -229,7 +229,7 @@ Thank you for reading our blog. We hope you found this information helpful for y
         <Header />
         <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center">
           <h1 className="text-3xl font-bold text-[#2c2520] mb-4">Post Not Found</h1>
-          <p className="text-[#6b5d52] mb-8">The blog post you're looking for doesn't exist.</p>
+          <p className="text-[#6b5d52] mb-8">The blog post you&apos;re looking for doesn&apos;t exist.</p>
           <Link href="/blog" className="bg-[#ba9157] text-white px-6 py-3 rounded-lg font-medium hover:bg-[#a67d4a] transition-colors">
             Back to Blog
           </Link>

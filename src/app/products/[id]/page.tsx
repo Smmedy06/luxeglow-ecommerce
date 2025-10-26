@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
 import { useCart } from '@/contexts/CartContext';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -179,7 +180,7 @@ export default function ProductDetailPage() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || !product) {
     return (
       <div className="min-h-screen">
         <Header />
@@ -206,7 +207,6 @@ export default function ProductDetailPage() {
     );
   }
 
-
   return (
     <div className="min-h-screen">
       <Header />
@@ -215,11 +215,11 @@ export default function ProductDetailPage() {
         {/* Breadcrumb */}
         <nav className="mb-8">
           <ol className="flex items-center space-x-2 text-sm text-[#6b5d52]">
-            <li><a href="/" className="hover:text-[#ba9157]">Home</a></li>
+            <li><Link href="/" className="hover:text-[#ba9157]">Home</Link></li>
             <li>/</li>
-            <li><a href="/shop" className="hover:text-[#ba9157]">Shop</a></li>
+            <li><Link href="/shop" className="hover:text-[#ba9157]">Shop</Link></li>
             <li>/</li>
-            <li><a href={`/shop?category=${product.category}`} className="hover:text-[#ba9157]">{product.category}</a></li>
+            <li><Link href={`/shop?category=${product.category}`} className="hover:text-[#ba9157]">{product.category}</Link></li>
             <li>/</li>
             <li className="text-[#2c2520] font-medium">{product.name}</li>
           </ol>
