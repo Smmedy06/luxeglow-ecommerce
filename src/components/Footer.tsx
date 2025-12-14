@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function Footer() {
   return (
@@ -7,8 +8,14 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Brand Info */}
           <div className="space-y-4">
-            <Link href="/" className="text-2xl font-bold text-[#2c2520]">
-              LuxeGlow
+            <Link href="/" className="inline-block">
+              <Image
+                src="/images/logo.jpg"
+                alt="LuxeGlow Logo"
+                width={120}
+                height={40}
+                className="h-10 w-auto object-contain"
+              />
             </Link>
             <p className="text-[#6b5d52] text-sm leading-relaxed">
               Premium skincare crafted with science-backed ingredients for radiant, healthy skin. Where science meets luxury.

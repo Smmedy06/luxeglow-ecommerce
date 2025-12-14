@@ -2,12 +2,17 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useCart } from '@/contexts/CartContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 
 export default function CartPage() {
   const { cartItems, removeFromCart, updateQuantity, clearCart, getTotalPrice } = useCart();
+  const { user } = useAuth();
+  const router = useRouter();
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [promoCode, setPromoCode] = useState('');
   const [appliedPromoCode, setAppliedPromoCode] = useState('');
@@ -61,14 +66,97 @@ export default function CartPage() {
     return Math.max(0, total); // Ensure total doesn't go below 0
   };
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
+    if (!user) {
+      alert('Please log in to complete your purchase.');
+      router.push('/');
+      return;
+    }
+
     setIsCheckingOut(true);
-    // Simulate checkout process
-    setTimeout(() => {
-      alert('Thank you for your purchase! Your order has been placed.');
-      clearCart();
+    try {
+      const subtotal = getTotalPrice();
+      const tax = subtotal * 0.2;
+      const total = subtotal + tax - discountAmount;
+
+      // Get user profile for shipping address
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!profile || !profile.address) {
+        alert('Please complete your shipping address in your profile before checkout.');
+        router.push('/profile');
+        setIsCheckingOut(false);
+        return;
+      }
+
+      // Generate order number
+      const orderNumber = `LG-${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getDate()).padStart(2, '0')}-${String(Date.now()).slice(-3)}`;
+
+      // Create order
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          user_id: user.id,
+          order_number: orderNumber,
+          status: 'pending',
+          total: total,
+          tax: tax,
+          discount: discountAmount > 0 ? discountAmount : null,
+          promo_code: appliedPromoCode || null,
+          shipping_address: {
+            name: profile.full_name || user.name,
+            address: profile.address,
+            address2: profile.address2 || null,
+            city: profile.city || '',
+            state: profile.state || null,
+            postal_code: profile.postal_code || '',
+            country: profile.country || 'United Kingdom',
+            delivery_instructions: profile.delivery_instructions || null,
+          },
+        })
+        .select()
+        .single();
+
+      if (orderError) {
+        console.error('Error creating order:', orderError);
+        alert('Failed to create order. Please try again.');
+        setIsCheckingOut(false);
+        return;
+      }
+
+      // Create order items
+      const orderItems = cartItems.map(item => ({
+        order_id: order.id,
+        product_id: item.id,
+        quantity: item.quantity,
+        price: item.price,
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems);
+
+      if (itemsError) {
+        console.error('Error creating order items:', itemsError);
+        alert('Failed to create order items. Please contact support.');
+        setIsCheckingOut(false);
+        return;
+      }
+
+      // Clear cart
+      await clearCart();
+
+      alert(`Thank you for your purchase! Your order #${orderNumber} has been placed.`);
+      router.push('/orders');
+    } catch (error) {
+      console.error('Checkout error:', error);
+      alert('An error occurred during checkout. Please try again.');
       setIsCheckingOut(false);
-    }, 2000);
+    }
   };
 
   if (cartItems.length === 0) {

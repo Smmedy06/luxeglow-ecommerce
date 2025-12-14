@@ -1,6 +1,8 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from './AuthContext';
 
 export interface CartItem {
   id: number;
@@ -14,12 +16,13 @@ export interface CartItem {
 
 interface CartContextType {
   cartItems: CartItem[];
-  addToCart: (product: Omit<CartItem, 'quantity'>) => void;
-  removeFromCart: (productId: number) => void;
-  updateQuantity: (productId: number, quantity: number) => void;
-  clearCart: () => void;
+  addToCart: (product: Omit<CartItem, 'quantity'>) => Promise<void>;
+  removeFromCart: (productId: number) => Promise<void>;
+  updateQuantity: (productId: number, quantity: number) => Promise<void>;
+  clearCart: () => Promise<void>;
   getTotalItems: () => number;
   getTotalPrice: () => number;
+  isLoading: boolean;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -38,21 +41,122 @@ interface CartProviderProps {
 
 export const CartProvider = ({ children }: CartProviderProps) => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { user } = useAuth();
 
-  // Load cart from localStorage on mount
+  // Load cart from Supabase or localStorage
   useEffect(() => {
-    const savedCart = localStorage.getItem('luxeGlowCart');
-    if (savedCart) {
-      setCartItems(JSON.parse(savedCart));
-    }
-  }, []);
+    const loadCart = async () => {
+      setIsLoading(true);
+      try {
+        if (user) {
+          // Load from Supabase
+          const { data: cartData, error } = await supabase
+            .from('cart_items')
+            .select(`
+              product_id,
+              quantity,
+              products (
+                id,
+                brand,
+                name,
+                price,
+                image,
+                category
+              )
+            `)
+            .eq('user_id', user.id);
 
-  // Save cart to localStorage whenever it changes
+          if (error) {
+            console.error('Error loading cart:', error);
+            // Fallback to localStorage
+            const savedCart = localStorage.getItem('luxeGlowCart');
+            if (savedCart) {
+              setCartItems(JSON.parse(savedCart));
+            }
+          } else if (cartData) {
+            const items: CartItem[] = cartData
+              .filter(item => item.products)
+              .map((item: any) => ({
+                id: item.products.id,
+                brand: item.products.brand,
+                name: item.products.name,
+                price: item.products.price,
+                image: item.products.image,
+                category: item.products.category,
+                quantity: item.quantity,
+              }));
+            setCartItems(items);
+          }
+        } else {
+          // Load from localStorage for non-authenticated users
+          const savedCart = localStorage.getItem('luxeGlowCart');
+          if (savedCart) {
+            setCartItems(JSON.parse(savedCart));
+          }
+        }
+      } catch (error) {
+        console.error('Error loading cart:', error);
+        // Fallback to localStorage
+        const savedCart = localStorage.getItem('luxeGlowCart');
+        if (savedCart) {
+          setCartItems(JSON.parse(savedCart));
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadCart();
+  }, [user]);
+
+  // Sync to Supabase when user is authenticated and cart changes
+  useEffect(() => {
+    if (!user || isLoading) return;
+
+    const syncCartToSupabase = async () => {
+      try {
+        // Delete all existing cart items for user
+        await supabase
+          .from('cart_items')
+          .delete()
+          .eq('user_id', user.id);
+
+        // Insert all current cart items
+        if (cartItems.length > 0) {
+          const cartItemsToInsert = cartItems.map(item => ({
+            user_id: user.id,
+            product_id: item.id,
+            quantity: item.quantity,
+          }));
+
+          const { error } = await supabase
+            .from('cart_items')
+            .insert(cartItemsToInsert);
+
+          if (error) {
+            console.error('Error syncing cart to Supabase:', error);
+          }
+        }
+      } catch (error) {
+        console.error('Error syncing cart:', error);
+      }
+    };
+
+    // Debounce the sync
+    const timeoutId = setTimeout(() => {
+      syncCartToSupabase();
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [cartItems, user, isLoading]);
+
+  // Save to localStorage as backup
   useEffect(() => {
     localStorage.setItem('luxeGlowCart', JSON.stringify(cartItems));
   }, [cartItems]);
 
-  const addToCart = (product: Omit<CartItem, 'quantity'>) => {
+  const addToCart = async (product: Omit<CartItem, 'quantity'>) => {
     setCartItems(prevItems => {
       const existingItem = prevItems.find(item => item.id === product.id);
       
@@ -66,15 +170,51 @@ export const CartProvider = ({ children }: CartProviderProps) => {
         return [...prevItems, { ...product, quantity: 1 }];
       }
     });
+
+    // If user is authenticated, sync immediately
+    if (user) {
+      try {
+        const existingItem = cartItems.find(item => item.id === product.id);
+        if (existingItem) {
+          await supabase
+            .from('cart_items')
+            .update({ quantity: existingItem.quantity + 1 })
+            .eq('user_id', user.id)
+            .eq('product_id', product.id);
+        } else {
+          await supabase
+            .from('cart_items')
+            .insert({
+              user_id: user.id,
+              product_id: product.id,
+              quantity: 1,
+            });
+        }
+      } catch (error) {
+        console.error('Error adding to cart:', error);
+      }
+    }
   };
 
-  const removeFromCart = (productId: number) => {
+  const removeFromCart = async (productId: number) => {
     setCartItems(prevItems => prevItems.filter(item => item.id !== productId));
+
+    if (user) {
+      try {
+        await supabase
+          .from('cart_items')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('product_id', productId);
+      } catch (error) {
+        console.error('Error removing from cart:', error);
+      }
+    }
   };
 
-  const updateQuantity = (productId: number, quantity: number) => {
+  const updateQuantity = async (productId: number, quantity: number) => {
     if (quantity <= 0) {
-      removeFromCart(productId);
+      await removeFromCart(productId);
       return;
     }
     
@@ -83,10 +223,33 @@ export const CartProvider = ({ children }: CartProviderProps) => {
         item.id === productId ? { ...item, quantity } : item
       )
     );
+
+    if (user) {
+      try {
+        await supabase
+          .from('cart_items')
+          .update({ quantity })
+          .eq('user_id', user.id)
+          .eq('product_id', productId);
+      } catch (error) {
+        console.error('Error updating cart quantity:', error);
+      }
+    }
   };
 
-  const clearCart = () => {
+  const clearCart = async () => {
     setCartItems([]);
+
+    if (user) {
+      try {
+        await supabase
+          .from('cart_items')
+          .delete()
+          .eq('user_id', user.id);
+      } catch (error) {
+        console.error('Error clearing cart:', error);
+      }
+    }
   };
 
   const getTotalItems = () => {
@@ -108,6 +271,7 @@ export const CartProvider = ({ children }: CartProviderProps) => {
     clearCart,
     getTotalItems,
     getTotalPrice,
+    isLoading,
   };
 
   return (

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
@@ -19,8 +20,15 @@ export default function Header() {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex-shrink-0">
-            <Link href="/" className="text-2xl font-bold text-[#2c2520]">
-              LuxeGlow
+            <Link href="/" className="flex items-center">
+              <Image
+                src="/images/logo.jpg"
+                alt="LuxeGlow Logo"
+                width={120}
+                height={40}
+                className="h-10 w-auto object-contain"
+                priority
+              />
             </Link>
           </div>
 

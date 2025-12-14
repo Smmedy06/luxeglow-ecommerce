@@ -160,6 +160,7 @@ export default function HeroCarousel() {
                   src={currentSlideData.image}
                   alt={currentSlideData.title}
                   fill
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                   className="object-cover"
                   priority={currentSlide === 0}
                 />

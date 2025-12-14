@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
@@ -24,20 +25,65 @@ export default function ProfilePage() {
   });
 
   useEffect(() => {
-    if (user) {
-      setFormData({
-        name: user.name,
-        email: user.email,
-        phone: '',
-        address: '',
-        address2: '',
-        city: '',
-        state: '',
-        postalCode: '',
-        country: 'United Kingdom',
-        deliveryInstructions: ''
-      });
-    }
+    const loadProfile = async () => {
+      if (!user) return;
+
+      try {
+        const { data: profile, error } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+
+        if (error && error.code !== 'PGRST116') {
+          console.error('Error loading profile:', error);
+        }
+
+        if (profile) {
+          setFormData({
+            name: profile.full_name || user.name,
+            email: user.email,
+            phone: profile.phone || '',
+            address: profile.address || '',
+            address2: profile.address2 || '',
+            city: profile.city || '',
+            state: profile.state || '',
+            postalCode: profile.postal_code || '',
+            country: profile.country || 'United Kingdom',
+            deliveryInstructions: profile.delivery_instructions || ''
+          });
+        } else {
+          setFormData({
+            name: user.name,
+            email: user.email,
+            phone: '',
+            address: '',
+            address2: '',
+            city: '',
+            state: '',
+            postalCode: '',
+            country: 'United Kingdom',
+            deliveryInstructions: ''
+          });
+        }
+      } catch (error) {
+        console.error('Error loading profile:', error);
+        setFormData({
+          name: user.name,
+          email: user.email,
+          phone: '',
+          address: '',
+          address2: '',
+          city: '',
+          state: '',
+          postalCode: '',
+          country: 'United Kingdom',
+          deliveryInstructions: ''
+        });
+      }
+    };
+
+    loadProfile();
   }, [user]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -48,10 +94,63 @@ export default function ProfilePage() {
     }));
   };
 
-  const handleSave = () => {
-    // In a real app, this would update the user data via API
-    console.log('Profile updated:', formData);
-    setIsEditing(false);
+  const handleSave = async () => {
+    if (!user) return;
+
+    try {
+      // Check if profile exists
+      const { data: existingProfile } = await supabase
+        .from('user_profiles')
+        .select('user_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      const profileData = {
+        user_id: user.id,
+        full_name: formData.name,
+        phone: formData.phone || null,
+        address: formData.address || null,
+        address2: formData.address2 || null,
+        city: formData.city || null,
+        state: formData.state || null,
+        postal_code: formData.postalCode || null,
+        country: formData.country || 'United Kingdom',
+        delivery_instructions: formData.deliveryInstructions || null,
+      };
+
+      let error;
+      if (existingProfile) {
+        // Update existing profile
+        const { error: updateError } = await supabase
+          .from('user_profiles')
+          .update(profileData)
+          .eq('user_id', user.id);
+        error = updateError;
+      } else {
+        // Insert new profile
+        const { error: insertError } = await supabase
+          .from('user_profiles')
+          .insert(profileData);
+        error = insertError;
+      }
+
+      if (error) {
+        console.error('Error saving profile:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        });
+        alert('Failed to save profile. Please try again.');
+        return;
+      }
+
+      setIsEditing(false);
+      alert('Profile updated successfully!');
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      alert('An error occurred while saving your profile.');
+    }
   };
 
   const handleCancel = () => {

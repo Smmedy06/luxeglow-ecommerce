@@ -3,7 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useCart } from '@/contexts/CartContext';
+import { supabase } from '@/lib/supabase';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 
@@ -14,124 +16,15 @@ interface Product {
   price: string;
   category: string;
   image: string;
+  images?: string[];
   description: string;
   inStock: boolean;
   stockCount?: number;
+  slug?: string;
+  features?: string[];
+  salePrice?: string;
+  onSale?: boolean;
 }
-
-// Mock product data - in a real app, this would come from an API
-const products: Product[] = [
-  { 
-    id: 1, 
-    brand: "ALLERGAN", 
-    name: "Juvederm Ultra 3", 
-    price: "£107.99", 
-    category: "Dermal Fillers", 
-    image: "product-1",
-    description: "Juvederm Ultra 3 is a hyaluronic acid dermal filler designed to add volume and fullness to the face. It's perfect for treating moderate to severe facial wrinkles and folds, particularly around the nose and mouth area. This premium filler provides natural-looking results that can last up to 12 months.",
-    inStock: true,
-    stockCount: 15
-  },
-  { 
-    id: 2, 
-    brand: "ALLERGAN", 
-    name: "Juvederm Voluma", 
-    price: "£143.99", 
-    category: "Dermal Fillers", 
-    image: "product-2",
-    description: "Juvederm Voluma is specifically designed to add volume to the cheek area and correct age-related volume loss in the mid-face. This advanced hyaluronic acid filler provides immediate results with long-lasting effects up to 18 months.",
-    inStock: true,
-    stockCount: 8
-  },
-  { 
-    id: 3, 
-    brand: "GALDERMA", 
-    name: "Restylane Kysse", 
-    price: "£113.99", 
-    category: "Dermal Fillers", 
-    image: "product-3",
-    description: "Restylane Kysse is the first FDA-approved hyaluronic acid filler specifically designed for lip augmentation and smoothing of perioral lines. It provides natural-looking, kissable lips with results that can last up to 12 months.",
-    inStock: false,
-    stockCount: 0
-  },
-  { 
-    id: 4, 
-    brand: "ALLERGAN", 
-    name: "Botox 100 Units", 
-    price: "£191.99", 
-    category: "Anti-Wrinkle Injections", 
-    image: "product-4",
-    description: "Botox 100 Units is the world's most popular anti-wrinkle treatment. It temporarily relaxes facial muscles to reduce the appearance of fine lines and wrinkles, particularly around the eyes, forehead, and mouth. Results typically last 3-4 months.",
-    inStock: true,
-    stockCount: 12
-  },
-  { 
-    id: 5, 
-    brand: "GALDERMA", 
-    name: "Dysport 300 Units", 
-    price: "£167.99", 
-    category: "Anti-Wrinkle Injections", 
-    image: "product-5",
-    description: "Dysport 300 Units is an alternative to Botox for treating moderate to severe frown lines. It works by temporarily relaxing the muscles that cause wrinkles, providing a smoother, more youthful appearance. Results can last 3-4 months.",
-    inStock: true,
-    stockCount: 6
-  },
-  { 
-    id: 6, 
-    brand: "GALDERMA", 
-    name: "Azzalure 125 Units", 
-    price: "£149.99", 
-    category: "Anti-Wrinkle Injections", 
-    image: "product-6",
-    description: "Azzalure 125 Units is a botulinum toxin type A treatment for temporary improvement in the appearance of moderate to severe glabellar lines. It provides smooth, natural-looking results with effects lasting 3-4 months.",
-    inStock: true,
-    stockCount: 9
-  },
-  { 
-    id: 7, 
-    brand: "TEOSYAL", 
-    name: "Teosyal RHA 2", 
-    price: "£125.99", 
-    category: "Dermal Fillers", 
-    image: "product-7",
-    description: "Teosyal RHA 2 is a hyaluronic acid filler designed for fine lines and superficial wrinkles. It provides natural-looking results with excellent biocompatibility and long-lasting effects up to 12 months.",
-    inStock: true,
-    stockCount: 7
-  },
-  { 
-    id: 8, 
-    brand: "MERZ", 
-    name: "Belotero Balance", 
-    price: "£101.99", 
-    category: "Dermal Fillers", 
-    image: "product-8",
-    description: "Belotero Balance is a hyaluronic acid filler specifically designed for treating fine lines and superficial wrinkles. It integrates naturally with the skin tissue for smooth, natural-looking results.",
-    inStock: true,
-    stockCount: 11
-  },
-  { 
-    id: 9, 
-    brand: "CROMA", 
-    name: "Princess Filler", 
-    price: "£95.99", 
-    category: "Dermal Fillers", 
-    image: "product-9",
-    description: "Princess Filler is a hyaluronic acid dermal filler designed for facial contouring and volume restoration. It provides natural-looking results with excellent durability and biocompatibility.",
-    inStock: true,
-    stockCount: 13
-  },
-  { 
-    id: 10, 
-    brand: "FILORGA", 
-    name: "NCTF 135HA", 
-    price: "£227.99", 
-    category: "Mesotherapy", 
-    image: "product-10",
-    description: "NCTF 135HA is a mesotherapy treatment containing hyaluronic acid and various vitamins. It provides deep hydration and skin rejuvenation with immediate and long-term benefits for skin quality and texture.",
-    inStock: true,
-    stockCount: 5
-  }
-];
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -139,28 +32,94 @@ export default function ProductDetailPage() {
   const [product, setProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [isZoomed, setIsZoomed] = useState(false);
+  const [zoomPosition, setZoomPosition] = useState({ x: 0, y: 0 });
+  const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    const productId = parseInt(params.id as string);
-    let foundProduct = products.find(p => p.id === productId);
-    
-    // If product not found in our data, create a fallback product
-    if (!foundProduct) {
-      foundProduct = {
-        id: productId,
-        brand: "LUXE GLOW",
-        name: `Product ${productId}`,
-        price: "£99.99",
-        category: "Premium Skincare",
-        image: `product-${productId}`,
-        description: "This is a premium skincare product designed to provide exceptional results. Our products are carefully formulated with the highest quality ingredients to ensure optimal performance and customer satisfaction.",
-        inStock: true,
-        stockCount: 10
-      };
-    }
-    
-    setProduct(foundProduct);
-    setIsLoading(false);
+    const loadProduct = async () => {
+      setIsLoading(true);
+      try {
+        const productIdentifier = params.id as string;
+        
+        // Try to load by slug first
+        const { data: dataBySlug, error: errorBySlug } = await supabase
+          .from('products')
+          .select('*')
+          .eq('slug', productIdentifier)
+          .maybeSingle();
+
+        let productData = dataBySlug;
+        let loadError = errorBySlug;
+
+        // If not found by slug, try by ID
+        if (!productData && !errorBySlug) {
+          const productId = parseInt(productIdentifier);
+          if (!isNaN(productId)) {
+            const { data: dataById, error: errorById } = await supabase
+              .from('products')
+              .select('*')
+              .eq('id', productId)
+              .single();
+            
+            productData = dataById;
+            loadError = errorById;
+          }
+        }
+
+        if (loadError) {
+          console.error('Error loading product:', {
+            message: loadError.message,
+            details: loadError.details,
+            hint: loadError.hint,
+            code: loadError.code
+          });
+          setIsLoading(false);
+          return;
+        }
+
+        if (!productData) {
+          console.error('Product not found:', productIdentifier);
+          setIsLoading(false);
+          return;
+        }
+
+        // Build images array - use images array if available, otherwise use primary image
+        const allImages = productData.images && productData.images.length > 0 
+          ? productData.images 
+          : (productData.image ? [productData.image] : []);
+        
+        setProduct({
+          id: productData.id,
+          brand: productData.brand,
+          name: productData.name,
+          price: productData.price,
+          category: productData.category,
+          image: allImages[0] || productData.image,
+          images: allImages,
+          description: productData.description || "This is a premium skincare product designed to provide exceptional results.",
+          inStock: productData.in_stock,
+          stockCount: productData.stock_count || undefined,
+          slug: productData.slug,
+          features: productData.features || [],
+          salePrice: productData.sale_price,
+          onSale: productData.on_sale || false,
+        });
+        
+        // Reset selected image index when product loads
+        setSelectedImageIndex(0);
+      } catch (error: any) {
+        console.error('Error loading product:', {
+          message: error?.message || 'Unknown error',
+          error: error
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadProduct();
   }, [params.id]);
 
   const handleAddToCart = () => {
@@ -225,28 +184,141 @@ export default function ProductDetailPage() {
           </ol>
         </nav>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Product Image */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
+          {/* Product Image - Larger and with navigation */}
           <div className="space-y-4">
-            <div className="aspect-square bg-gray-300 rounded-lg flex items-center justify-center">
-              <div className="text-center text-gray-500">
-                <svg className="w-32 h-32 mx-auto mb-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-                </svg>
-                <p className="text-sm">{product.image}</p>
+            {/* Main Image Display - Larger */}
+            <div className="relative bg-gray-100 rounded-lg overflow-hidden group">
+              {/* Main Image Container - Larger size */}
+              <div 
+                className="w-full h-[500px] lg:h-[600px] bg-white relative overflow-hidden"
+                onMouseMove={(e) => {
+                  if (isZoomed) {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const x = ((e.clientX - rect.left) / rect.width) * 100;
+                    const y = ((e.clientY - rect.top) / rect.height) * 100;
+                    setZoomPosition({ x, y });
+                  }
+                }}
+                onMouseEnter={() => setIsZoomed(true)}
+                onMouseLeave={() => setIsZoomed(false)}
+              >
+                {product.images && product.images.length > 0 && product.images[selectedImageIndex] ? (
+                  failedImages.has(product.images[selectedImageIndex]) ? (
+                    <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                      <svg className="w-32 h-32 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  ) : (
+                    <img
+                      src={product.images[selectedImageIndex]}
+                      alt={product.name}
+                      className={`w-full h-full transition-transform duration-300 ${
+                        isZoomed ? 'scale-150' : 'scale-100'
+                      }`}
+                      style={{
+                        objectFit: 'contain',
+                        transformOrigin: `${zoomPosition.x}% ${zoomPosition.y}%`,
+                      }}
+                      onError={() => {
+                        setFailedImages(prev => new Set(prev).add(product.images![selectedImageIndex]));
+                      }}
+                    />
+                  )
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                    <svg className="w-32 h-32 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                )}
+                
+                {/* Navigation Arrows - Only show if more than 1 image */}
+                {product.images && product.images.length > 1 && (
+                  <>
+                    {/* Left Arrow */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedImageIndex((prev) => 
+                          prev === 0 ? product.images!.length - 1 : prev - 1
+                        );
+                      }}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-2 shadow-lg transition-all opacity-0 group-hover:opacity-100 z-10"
+                      aria-label="Previous image"
+                    >
+                      <svg className="w-6 h-6 text-[#2c2520]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                    </button>
+                    
+                    {/* Right Arrow */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedImageIndex((prev) => 
+                          prev === product.images!.length - 1 ? 0 : prev + 1
+                        );
+                      }}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-2 shadow-lg transition-all opacity-0 group-hover:opacity-100 z-10"
+                      aria-label="Next image"
+                    >
+                      <svg className="w-6 h-6 text-[#2c2520]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  </>
+                )}
+                
+                {/* Image Counter */}
+                {product.images && product.images.length > 1 && (
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/70 text-white px-3 py-1 rounded-full text-sm z-10">
+                    {selectedImageIndex + 1} / {product.images.length}
+                  </div>
+                )}
               </div>
             </div>
             
-            {/* Additional product images would go here */}
-            <div className="grid grid-cols-4 gap-2">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="aspect-square bg-gray-200 rounded-lg flex items-center justify-center">
-                  <svg className="w-8 h-8 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-                  </svg>
-                </div>
-              ))}
-            </div>
+            {/* Thumbnail Gallery - Horizontal scrollable */}
+            {product.images && product.images.length > 1 && (
+              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                {product.images.map((img, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setSelectedImageIndex(i)}
+                    className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all ${
+                      selectedImageIndex === i 
+                        ? 'border-[#ba9157] ring-2 ring-[#ba9157] ring-offset-2' 
+                        : 'border-transparent hover:border-gray-300'
+                    }`}
+                  >
+                    {failedImages.has(img) ? (
+                      <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                        <svg className="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                    ) : img.startsWith('http') || img.startsWith('blob:') || img.startsWith('data:') ? (
+                      <img
+                        src={img}
+                        alt={`${product.name} thumbnail ${i + 1}`}
+                        className="w-full h-full object-cover"
+                        onError={() => {
+                          setFailedImages(prev => new Set(prev).add(img));
+                        }}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                        <svg className="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Product Info */}
@@ -255,12 +327,28 @@ export default function ProductDetailPage() {
               <p className="text-sm text-[#ba9157] uppercase tracking-wider mb-2">
                 {product.brand}
               </p>
-              <h1 className="text-3xl font-bold text-[#2c2520] mb-4">
+              <h1 className="text-3xl lg:text-4xl font-bold text-[#2c2520] mb-4">
                 {product.name}
               </h1>
-              <p className="text-3xl font-bold text-[#2c2520] mb-4">
-                {product.price}
-              </p>
+              <div className="flex items-center gap-3 mb-4">
+                {product.onSale && product.salePrice ? (
+                  <>
+                    <p className="text-3xl font-bold text-[#2c2520]">
+                      ${product.salePrice}
+                    </p>
+                    <p className="text-xl text-gray-400 line-through">
+                      ${product.price}
+                    </p>
+                    <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded">
+                      SALE
+                    </span>
+                  </>
+                ) : (
+                  <p className="text-3xl font-bold text-[#2c2520]">
+                    ${product.price}
+                  </p>
+                )}
+              </div>
             </div>
 
             {/* Stock Status */}
@@ -322,36 +410,22 @@ export default function ProductDetailPage() {
               </button>
             </div>
 
-            {/* Product Features */}
-            <div className="border-t border-gray-200 pt-6">
-              <h3 className="text-lg font-semibold text-[#2c2520] mb-4">Product Features</h3>
-              <ul className="space-y-2 text-[#6b5d52]">
-                <li className="flex items-center space-x-2">
-                  <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                  <span>Professional grade quality</span>
-                </li>
-                <li className="flex items-center space-x-2">
-                  <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                  <span>FDA approved</span>
-                </li>
-                <li className="flex items-center space-x-2">
-                  <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                  <span>Long-lasting results</span>
-                </li>
-                <li className="flex items-center space-x-2">
-                  <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                  <span>Professional consultation available</span>
-                </li>
-              </ul>
-            </div>
+            {/* Product Features - Dynamic from database */}
+            {product.features && product.features.length > 0 && (
+              <div className="border-t border-gray-200 pt-6">
+                <h3 className="text-lg font-semibold text-[#2c2520] mb-4">Product Features</h3>
+                <ul className="space-y-2 text-[#6b5d52]">
+                  {product.features.map((feature, index) => (
+                    <li key={index} className="flex items-center space-x-2">
+                      <svg className="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         </div>
       </main>

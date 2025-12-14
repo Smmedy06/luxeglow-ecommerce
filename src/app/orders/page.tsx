@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
@@ -36,99 +37,100 @@ export default function OrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Mock data - in a real app, this would come from an API
+  // Load orders from Supabase
   useEffect(() => {
-    if (user) {
-      // Simulate API call
-      setTimeout(() => {
-        setOrders([
-          {
-            id: '1',
-            orderNumber: 'LG-2024-001',
-            date: '2024-01-15',
-            status: 'delivered',
-            total: 299.97,
-            trackingNumber: 'TRK123456789',
-            items: [
-              {
-                id: '1',
-                name: 'Juvederm Ultra 3',
-                brand: 'ALLERGAN',
-                price: 107.99,
-                quantity: 2,
-                image: '/api/placeholder/100/100'
-              },
-              {
-                id: '2',
-                name: 'Botox 100 Units',
-                brand: 'ALLERGAN',
-                price: 83.99,
-                quantity: 1,
-                image: '/api/placeholder/100/100'
-              }
-            ],
-            shippingAddress: {
-              name: user.name,
-              address: '123 Beauty Lane',
-              city: 'London',
-              postalCode: 'W1F 8QJ',
-              country: 'United Kingdom'
-            }
-          },
-          {
-            id: '2',
-            orderNumber: 'LG-2024-002',
-            date: '2024-01-20',
-            status: 'shipped',
-            total: 215.98,
-            trackingNumber: 'TRK987654321',
-            items: [
-              {
-                id: '3',
-                name: 'Restylane Lyft',
-                brand: 'GALDERMA',
-                price: 215.98,
-                quantity: 1,
-                image: '/api/placeholder/100/100'
-              }
-            ],
-            shippingAddress: {
-              name: user.name,
-              address: '123 Beauty Lane',
-              city: 'London',
-              postalCode: 'W1F 8QJ',
-              country: 'United Kingdom'
-            }
-          },
-          {
-            id: '3',
-            orderNumber: 'LG-2024-003',
-            date: '2024-01-25',
-            status: 'processing',
-            total: 431.96,
-            items: [
-              {
-                id: '4',
-                name: 'Sculptra Aesthetic',
-                brand: 'GALDERMA',
-                price: 431.96,
-                quantity: 1,
-                image: '/api/placeholder/100/100'
-              }
-            ],
-            shippingAddress: {
-              name: user.name,
-              address: '123 Beauty Lane',
-              city: 'London',
-              postalCode: 'W1F 8QJ',
-              country: 'United Kingdom'
-            }
-          }
-        ]);
+    const loadOrders = async () => {
+      if (!user) {
         setIsLoading(false);
-      }, 1000);
-    }
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        const { data: ordersData, error: ordersError } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+
+        if (ordersError) {
+          console.error('Error loading orders:', ordersError);
+          setOrders([]);
+          setIsLoading(false);
+          return;
+        }
+
+        if (!ordersData || ordersData.length === 0) {
+          setOrders([]);
+          setIsLoading(false);
+          return;
+        }
+
+        // Load order items for each order
+        const ordersWithItems = await Promise.all(
+          ordersData.map(async (order) => {
+            const { data: itemsData, error: itemsError } = await supabase
+              .from('order_items')
+              .select(`
+                *,
+                products (
+                  id,
+                  brand,
+                  name,
+                  image
+                )
+              `)
+              .eq('order_id', order.id);
+
+            if (itemsError) {
+              console.error('Error loading order items:', itemsError);
+              return null;
+            }
+
+            const items = (itemsData || []).map((item: any) => ({
+              id: item.id,
+              name: item.products?.name || 'Unknown Product',
+              brand: item.products?.brand || 'Unknown',
+              price: parseFloat(item.price.replace('£', '')),
+              quantity: item.quantity,
+              image: item.products?.image || 'product-placeholder',
+            }));
+
+            const shippingAddress = typeof order.shipping_address === 'object' 
+              ? order.shipping_address 
+              : JSON.parse(order.shipping_address || '{}');
+
+            return {
+              id: order.id,
+              orderNumber: order.order_number,
+              date: order.created_at,
+              status: order.status,
+              total: parseFloat(order.total.toString()),
+              items,
+              shippingAddress: {
+                name: shippingAddress.name || user.name,
+                address: shippingAddress.address || '',
+                city: shippingAddress.city || '',
+                postalCode: shippingAddress.postal_code || '',
+                country: shippingAddress.country || 'United Kingdom',
+              },
+              trackingNumber: order.tracking_number || undefined,
+            };
+          })
+        );
+
+        setOrders(ordersWithItems.filter((order): order is Order => order !== null));
+      } catch (error) {
+        console.error('Error loading orders:', error);
+        setOrders([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadOrders();
   }, [user]);
+
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -271,58 +273,88 @@ export default function OrdersPage() {
                     {orders.map((order) => (
                       <div key={order.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                         {/* Order Header */}
-                        <div className="p-6 border-b border-gray-200">
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                        <div className="p-4 md:p-6 border-b border-gray-200">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                             <div>
                               <h3 className="text-lg font-semibold text-[#2c2520]">Order #{order.orderNumber}</h3>
                               <p className="text-[#6b5d52] text-sm">Placed on {new Date(order.date).toLocaleDateString()}</p>
+                              {order.trackingNumber && (
+                                <p className="text-sm text-[#6b5d52] mt-1">
+                                  Tracking: <span className="font-medium text-[#2c2520]">{order.trackingNumber}</span>
+                                </p>
+                              )}
                             </div>
-                            <div className="mt-4 sm:mt-0 flex flex-col sm:items-end">
+                            <div className="flex flex-col sm:items-end gap-2">
                               <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
                                 {getStatusText(order.status)}
                               </span>
-                              <p className="text-lg font-semibold text-[#2c2520] mt-2">£{order.total.toFixed(2)}</p>
+                              <p className="text-lg font-semibold text-[#2c2520]">£{order.total.toFixed(2)}</p>
+                            </div>
+                          </div>
+
+                          {/* Order Status Timeline */}
+                          <div className="mt-4 pt-4 border-t border-gray-200">
+                            <div className="flex items-center justify-between text-xs md:text-sm">
+                              <div className={`flex flex-col items-center ${order.status === 'pending' || order.status === 'processing' || order.status === 'shipped' || order.status === 'delivered' ? 'text-[#ba9157]' : 'text-gray-400'}`}>
+                                <div className={`w-3 h-3 rounded-full ${order.status === 'pending' || order.status === 'processing' || order.status === 'shipped' || order.status === 'delivered' ? 'bg-[#ba9157]' : 'bg-gray-300'}`}></div>
+                                <span className="mt-1">Pending</span>
+                              </div>
+                              <div className={`flex-1 h-0.5 mx-2 ${order.status === 'processing' || order.status === 'shipped' || order.status === 'delivered' ? 'bg-[#ba9157]' : 'bg-gray-300'}`}></div>
+                              <div className={`flex flex-col items-center ${order.status === 'processing' || order.status === 'shipped' || order.status === 'delivered' ? 'text-[#ba9157]' : 'text-gray-400'}`}>
+                                <div className={`w-3 h-3 rounded-full ${order.status === 'processing' || order.status === 'shipped' || order.status === 'delivered' ? 'bg-[#ba9157]' : 'bg-gray-300'}`}></div>
+                                <span className="mt-1">Processing</span>
+                              </div>
+                              <div className={`flex-1 h-0.5 mx-2 ${order.status === 'shipped' || order.status === 'delivered' ? 'bg-[#ba9157]' : 'bg-gray-300'}`}></div>
+                              <div className={`flex flex-col items-center ${order.status === 'shipped' || order.status === 'delivered' ? 'text-[#ba9157]' : 'text-gray-400'}`}>
+                                <div className={`w-3 h-3 rounded-full ${order.status === 'shipped' || order.status === 'delivered' ? 'bg-[#ba9157]' : 'bg-gray-300'}`}></div>
+                                <span className="mt-1">Shipped</span>
+                              </div>
+                              <div className={`flex-1 h-0.5 mx-2 ${order.status === 'delivered' ? 'bg-[#ba9157]' : 'bg-gray-300'}`}></div>
+                              <div className={`flex flex-col items-center ${order.status === 'delivered' ? 'text-[#ba9157]' : 'text-gray-400'}`}>
+                                <div className={`w-3 h-3 rounded-full ${order.status === 'delivered' ? 'bg-[#ba9157]' : 'bg-gray-300'}`}></div>
+                                <span className="mt-1">Delivered</span>
+                              </div>
                             </div>
                           </div>
                         </div>
 
                         {/* Order Items */}
-                        <div className="p-6">
+                        <div className="p-4 md:p-6">
                           <div className="space-y-4">
                             {order.items.map((item) => (
-                              <div key={item.id} className="flex items-center space-x-4">
-                                <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center">
+                              <div key={item.id} className="flex items-center space-x-3 md:space-x-4">
+                                <div className="w-12 h-12 md:w-16 md:h-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
                                   <span className="text-gray-400 text-xs">IMG</span>
                                 </div>
-                                <div className="flex-1">
-                                  <h4 className="font-medium text-[#2c2520]">{item.brand} {item.name}</h4>
-                                  <p className="text-[#6b5d52] text-sm">Quantity: {item.quantity}</p>
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-medium text-[#2c2520] text-sm md:text-base truncate">{item.brand} {item.name}</h4>
+                                  <p className="text-[#6b5d52] text-xs md:text-sm">Quantity: {item.quantity}</p>
                                 </div>
-                                <div className="text-right">
-                                  <p className="font-semibold text-[#2c2520]">£{item.price.toFixed(2)}</p>
+                                <div className="text-right flex-shrink-0">
+                                  <p className="font-semibold text-[#2c2520] text-sm md:text-base">£{item.price.toFixed(2)}</p>
                                 </div>
                               </div>
                             ))}
                           </div>
 
                           {/* Order Actions */}
-                          <div className="mt-6 pt-6 border-t border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                            <div className="mb-4 sm:mb-0">
+                          <div className="mt-4 md:mt-6 pt-4 md:pt-6 border-t border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div className="flex flex-col gap-2">
                               {order.trackingNumber && (
-                                <p className="text-sm text-[#6b5d52]">
-                                  Tracking: <span className="font-medium">{order.trackingNumber}</span>
+                                <p className="text-xs md:text-sm text-[#6b5d52]">
+                                  Tracking: <span className="font-medium text-[#2c2520]">{order.trackingNumber}</span>
                                 </p>
                               )}
                             </div>
-                            <div className="flex space-x-3">
+                            <div className="flex flex-col sm:flex-row gap-2 sm:space-x-3">
                               <button
                                 onClick={() => setSelectedOrder(order)}
-                                className="px-4 py-2 border border-gray-300 text-[#6b5d52] rounded-lg hover:bg-gray-50 transition-colors"
+                                className="px-4 py-2 border border-gray-300 text-[#6b5d52] rounded-lg hover:bg-gray-50 transition-colors text-sm md:text-base"
                               >
                                 View Details
                               </button>
                               {order.status === 'delivered' && (
-                                <button className="px-4 py-2 bg-[#ba9157] text-white rounded-lg hover:bg-[#a67d4a] transition-colors">
+                                <button className="px-4 py-2 bg-[#ba9157] text-white rounded-lg hover:bg-[#a67d4a] transition-colors text-sm md:text-base">
                                   Reorder
                                 </button>
                               )}

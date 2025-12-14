@@ -8,6 +8,11 @@ export const metadata: Metadata = {
   description: "Premium skincare crafted with science-backed ingredients for radiant, healthy skin. Where science meets luxury.",
   keywords: "skincare, aesthetics, beauty, premium, luxury, dermal fillers, botox, mesotherapy",
   authors: [{ name: "LuxeGlow" }],
+  icons: {
+    icon: '/images/logo.jpg',
+    shortcut: '/images/logo.jpg',
+    apple: '/images/logo.jpg',
+  },
 };
 
 export const viewport = {

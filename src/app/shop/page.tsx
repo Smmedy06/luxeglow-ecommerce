@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 
@@ -14,67 +16,12 @@ interface Product {
   description?: string;
   inStock?: boolean;
   stockCount?: number;
+  slug?: string;
 }
 
-const products: Product[] = [
-  { id: 1, brand: "ALLERGAN", name: "Juvederm Ultra 3", price: "£107.99", category: "Dermal Fillers", image: "product-1", inStock: true, stockCount: 15 },
-  { id: 2, brand: "ALLERGAN", name: "Juvederm Voluma", price: "£143.99", category: "Dermal Fillers", image: "product-2", inStock: true, stockCount: 8 },
-  { id: 3, brand: "GALDERMA", name: "Restylane Kysse", price: "£113.99", category: "Dermal Fillers", image: "product-3", inStock: false, stockCount: 0 },
-  { id: 4, brand: "ALLERGAN", name: "Botox 100 Units", price: "£191.99", category: "Anti-Wrinkle Injections", image: "product-4", inStock: true, stockCount: 12 },
-  { id: 5, brand: "GALDERMA", name: "Dysport 300 Units", price: "£167.99", category: "Anti-Wrinkle Injections", image: "product-5", inStock: true, stockCount: 6 },
-  { id: 6, brand: "GALDERMA", name: "Azzalure 125 Units", price: "£149.99", category: "Anti-Wrinkle Injections", image: "product-6" },
-  { id: 7, brand: "TEOSYAL", name: "Teosyal RHA 2", price: "£125.99", category: "Dermal Fillers", image: "product-7" },
-  { id: 8, brand: "MERZ", name: "Belotero Balance", price: "£101.99", category: "Dermal Fillers", image: "product-8" },
-  { id: 9, brand: "CROMA", name: "Princess Filler", price: "£95.99", category: "Dermal Fillers", image: "product-9" },
-  { id: 10, brand: "FILORGA", name: "NCTF 135HA", price: "£227.99", category: "Mesotherapy", image: "product-10" },
-  { id: 11, brand: "PLURYAL", name: "Pluryal Mesoline Shine", price: "£161.99", category: "Mesotherapy", image: "product-11" },
-  { id: 12, brand: "DERMALAX", name: "Dermalax Hyalbag Solution", price: "£179.99", category: "Mesotherapy", image: "product-12" },
-  { id: 13, brand: "PDO", name: "PDO Cog Threads 19G", price: "£59.99", category: "Thread Lifts", image: "product-13" },
-  { id: 14, brand: "PDO", name: "PDO Mono Threads 30G", price: "£47.99", category: "Thread Lifts", image: "product-14" },
-  { id: 15, brand: "ZO SKIN HEALTH", name: "ZO Skin Health Daily Power Defense", price: "£149.99", category: "Professional Skincare", image: "product-15" },
-  { id: 16, brand: "SKINCEUTICALS", name: "SkinCeuticals CE Ferulic", price: "£179.99", category: "Professional Skincare", image: "product-16" },
-  { id: 17, brand: "OBAGI", name: "Obagi Professional-C Serum 20%", price: "£161.99", category: "Professional Skincare", image: "product-17" },
-  { id: 18, brand: "MEDICAL GRADE", name: "Medical Grade Cannulas 20G", price: "£41.99", category: "Medical Devices", image: "product-18" },
-  { id: 19, brand: "PRECISION", name: "Precision Dermal Needles 30G", price: "£29.99", category: "Medical Devices", image: "product-19" },
-  { id: 20, brand: "GALDERMA", name: "Restylane Lyft", price: "£135.99", category: "Dermal Fillers", image: "product-20" },
-  { id: 21, brand: "MERZ", name: "Radiesse", price: "£189.99", category: "Dermal Fillers", image: "product-21" },
-  { id: 22, brand: "GALDERMA", name: "Sculptra Aesthetic", price: "£299.99", category: "Dermal Fillers", image: "product-22" },
-  { id: 23, brand: "ALLERGAN", name: "Juvederm Ultra 4", price: "£119.99", category: "Dermal Fillers", image: "product-23" },
-  { id: 24, brand: "GALDERMA", name: "Restylane Defyne", price: "£129.99", category: "Dermal Fillers", image: "product-24" },
-  { id: 25, brand: "TEOSYAL", name: "Teosyal RHA 3", price: "£139.99", category: "Dermal Fillers", image: "product-25" },
-  { id: 26, brand: "MERZ", name: "Belotero Intense", price: "£109.99", category: "Dermal Fillers", image: "product-26" },
-  { id: 27, brand: "CROMA", name: "Princess Volume", price: "£99.99", category: "Dermal Fillers", image: "product-27" },
-  { id: 28, brand: "FILORGA", name: "NCTF 135HA Plus", price: "£249.99", category: "Mesotherapy", image: "product-28" },
-  { id: 29, brand: "PLURYAL", name: "Pluryal Mesoline Volume", price: "£169.99", category: "Mesotherapy", image: "product-29" },
-  { id: 30, brand: "DERMALAX", name: "Dermalax Hyalbag Plus", price: "£189.99", category: "Mesotherapy", image: "product-30" },
-  { id: 31, brand: "PDO", name: "PDO Cog Threads 25G", price: "£69.99", category: "Thread Lifts", image: "product-31" },
-  { id: 32, brand: "PDO", name: "PDO Mono Threads 25G", price: "£57.99", category: "Thread Lifts", image: "product-32" },
-  { id: 33, brand: "ZO SKIN HEALTH", name: "ZO Skin Health Retinol", price: "£159.99", category: "Professional Skincare", image: "product-33" },
-  { id: 34, brand: "SKINCEUTICALS", name: "SkinCeuticals Retinol", price: "£189.99", category: "Professional Skincare", image: "product-34" },
-  { id: 35, brand: "OBAGI", name: "Obagi Professional-C Serum 15%", price: "£151.99", category: "Professional Skincare", image: "product-35" },
-  { id: 36, brand: "MEDICAL GRADE", name: "Medical Grade Cannulas 25G", price: "£45.99", category: "Medical Devices", image: "product-36" },
-  { id: 37, brand: "PRECISION", name: "Precision Dermal Needles 25G", price: "£33.99", category: "Medical Devices", image: "product-37" },
-  { id: 38, brand: "GALDERMA", name: "Restylane Refyne", price: "£139.99", category: "Dermal Fillers", image: "product-38" },
-  { id: 39, brand: "MERZ", name: "Radiesse Plus", price: "£199.99", category: "Dermal Fillers", image: "product-39" },
-  { id: 40, brand: "ALLERGAN", name: "Botox 200 Units", price: "£379.99", category: "Anti-Wrinkle Injections", image: "product-40" },
-  { id: 41, brand: "GALDERMA", name: "Dysport 500 Units", price: "£277.99", category: "Anti-Wrinkle Injections", image: "product-41" },
-  { id: 42, brand: "GALDERMA", name: "Azzalure 200 Units", price: "£249.99", category: "Anti-Wrinkle Injections", image: "product-42" },
-  { id: 43, brand: "TEOSYAL", name: "Teosyal RHA 4", price: "£149.99", category: "Dermal Fillers", image: "product-43" },
-  { id: 44, brand: "MERZ", name: "Belotero Soft", price: "£99.99", category: "Dermal Fillers", image: "product-44" },
-  { id: 45, brand: "CROMA", name: "Princess Soft", price: "£89.99", category: "Dermal Fillers", image: "product-45" }
-];
-
-const categories = [
-  { name: "All Products", count: 45, active: true },
-  { name: "Dermal Fillers", count: 18 },
-  { name: "Anti-Wrinkle Injections", count: 6 },
-  { name: "Mesotherapy", count: 6 },
-  { name: "Professional Skincare", count: 6 },
-  { name: "Thread Lifts", count: 4 },
-  { name: "Medical Devices", count: 5 }
-];
-
 export default function ShopPage() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("All Products");
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("Newest");
@@ -82,6 +29,78 @@ export default function ShopPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const productsPerPage = 30;
+
+  const [categories, setCategories] = useState<{ name: string; count: number }[]>([]);
+
+  // Load products and categories from Supabase
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        // Load products
+        const { data: productsData, error: productsError } = await supabase
+          .from('products')
+          .select('*')
+          .order('id', { ascending: false });
+
+        if (productsError) {
+          console.error('Error loading products:', productsError);
+        } else if (productsData) {
+          const formattedProducts: Product[] = productsData.map(product => ({
+            id: product.id,
+            brand: product.brand,
+            name: product.name,
+            price: product.price,
+            category: product.category,
+            image: product.image,
+            description: product.description || undefined,
+            inStock: product.in_stock,
+            stockCount: product.stock_count || undefined,
+            slug: product.slug || `product-${product.id}`,
+          }));
+          setProducts(formattedProducts);
+        }
+
+        // Load categories from database
+        const { data: categoriesData, error: categoriesError } = await supabase
+          .from('categories')
+          .select('*')
+          .eq('is_active', true)
+          .order('name', { ascending: true });
+
+        if (categoriesError) {
+          console.error('Error loading categories:', categoriesError);
+          // Fallback to hardcoded categories if table doesn't exist yet
+          const categoryCounts = productsData ? [
+            { name: "All Products", count: productsData.length },
+            { name: "Dermal Fillers", count: productsData.filter((p: any) => p.category === "Dermal Fillers").length },
+            { name: "Anti-Wrinkle Injections", count: productsData.filter((p: any) => p.category === "Anti-Wrinkle Injections").length },
+            { name: "Mesotherapy", count: productsData.filter((p: any) => p.category === "Mesotherapy").length },
+            { name: "Professional Skincare", count: productsData.filter((p: any) => p.category === "Professional Skincare").length },
+            { name: "Thread Lifts", count: productsData.filter((p: any) => p.category === "Thread Lifts").length },
+            { name: "Medical Devices", count: productsData.filter((p: any) => p.category === "Medical Devices").length }
+          ] : [];
+          setCategories(categoryCounts);
+        } else if (categoriesData) {
+          // Use database categories
+          const categoryList = [
+            { name: "All Products", count: productsData?.length || 0 },
+            ...categoriesData.map(cat => ({
+              name: cat.name,
+              count: productsData?.filter((p: any) => p.category === cat.name).length || 0
+            }))
+          ];
+          setCategories(categoryList);
+        }
+      } catch (error) {
+        console.error('Error loading data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
 
   const filteredProducts = products.filter(product => {
     const matchesCategory = selectedCategory === "All Products" || product.category === selectedCategory;
@@ -129,6 +148,30 @@ export default function ShopPage() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }, 100);
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen">
+        <Header />
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="animate-pulse">
+            <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {[1, 2, 3, 4, 5, 6].map(i => (
+                <div key={i} className="bg-white rounded-lg shadow-sm p-6">
+                  <div className="aspect-square bg-gray-200 rounded-lg mb-4"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
+                  <div className="h-6 bg-gray-200 rounded w-3/4 mb-2"></div>
+                  <div className="h-5 bg-gray-200 rounded w-1/4"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen">
@@ -486,16 +529,39 @@ export default function ShopPage() {
             {/* Products Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {currentProducts.map((product) => (
-                <div key={product.id} className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200">
+                <div key={product.id} className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden">
                   {/* Product Image */}
-                  <div className="aspect-square bg-gray-300 rounded-t-lg flex items-center justify-center">
-                    <div className="text-center text-gray-500">
-                      <svg className="w-16 h-16 mx-auto mb-2" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-                      </svg>
-                      <p className="text-xs">{product.image}</p>
+                  <Link href={`/products/${product.slug || product.id}`}>
+                    <div className="aspect-square bg-gray-100 rounded-t-lg overflow-hidden relative">
+                      {product.image && (product.image.startsWith('http') || product.image.startsWith('blob:') || product.image.startsWith('data:')) ? (
+                        <img
+                          src={product.image}
+                          alt={product.name}
+                          className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            const parent = target.parentElement;
+                            if (parent) {
+                              parent.innerHTML = `
+                                <div class="w-full h-full flex items-center justify-center bg-gray-200">
+                                  <svg class="w-16 h-16 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
+                                  </svg>
+                                </div>
+                              `;
+                            }
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                          <svg className="w-16 h-16 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      )}
                     </div>
-                  </div>
+                  </Link>
 
                   {/* Product Info */}
                   <div className="p-6 space-y-3">
@@ -528,12 +594,12 @@ export default function ShopPage() {
                       </div>
                     )}
                     
-                    <a 
-                      href={`/products/${product.id}`}
+                    <Link 
+                      href={`/products/${product.slug || product.id}`}
                       className="w-full border border-[#2c2520] text-[#2c2520] py-2 px-4 rounded-lg font-medium hover:bg-[#2c2520] hover:text-white transition-colors inline-block text-center"
                     >
                       View Details
-                    </a>
+                    </Link>
                   </div>
                 </div>
               ))}
