@@ -87,7 +87,12 @@ export default function OrdersPage() {
               return null;
             }
 
-            const items = (itemsData || []).map((item: any) => ({
+            const items = (itemsData || []).map((item: {
+              id: string;
+              products?: { name?: string; brand?: string; image?: string };
+              price: string;
+              quantity: number;
+            }) => ({
               id: item.id,
               name: item.products?.name || 'Unknown Product',
               brand: item.products?.brand || 'Unknown',

@@ -13,10 +13,17 @@ export async function uploadImage(
   folder: string = 'products'
 ): Promise<UploadResult> {
   try {
+    // Validate file
+    if (!file || file.size === 0) {
+      return { url: '', error: 'Invalid file' };
+    }
+
     // Generate unique filename
-    const fileExt = file.name.split('.').pop();
+    const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
     const filePath = `${folder}/${fileName}`;
+
+    console.log('Uploading image:', { fileName, filePath, size: file.size });
 
     // Upload to Supabase Storage
     const { data, error } = await supabase.storage
@@ -31,15 +38,27 @@ export async function uploadImage(
       return { url: '', error: error.message };
     }
 
+    if (!data) {
+      console.error('Upload failed: No data returned');
+      return { url: '', error: 'Upload failed: No data returned' };
+    }
+
     // Get public URL
     const { data: { publicUrl } } = supabase.storage
       .from('product-images')
       .getPublicUrl(filePath);
 
+    console.log('Image uploaded successfully:', publicUrl);
+
+    if (!publicUrl) {
+      return { url: '', error: 'Failed to get public URL' };
+    }
+
     return { url: publicUrl };
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error uploading image:', error);
-    return { url: '', error: error.message || 'Failed to upload image' };
+    const errorMessage = error instanceof Error ? error.message : 'Failed to upload image';
+    return { url: '', error: errorMessage };
   }
 }
 

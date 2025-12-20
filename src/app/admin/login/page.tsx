@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 
 export default function AdminLoginPage() {
@@ -19,9 +20,6 @@ export default function AdminLoginPage() {
     setIsLoading(true);
 
     try {
-      // Check if this is an admin email (you can configure this)
-      const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(',') || [];
-      
       // For now, we'll check if the user exists and is admin
       // In production, you might want to use a separate admin table
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
@@ -116,9 +114,9 @@ export default function AdminLoginPage() {
         </form>
 
         <div className="mt-6 text-center">
-          <a href="/" className="text-[#ba9157] hover:text-[#a67d4a] text-sm">
+          <Link href="/" className="text-[#ba9157] hover:text-[#a67d4a] text-sm">
             ← Back to Website
-          </a>
+          </Link>
         </div>
       </div>
     </div>

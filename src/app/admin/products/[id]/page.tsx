@@ -44,7 +44,6 @@ export default function AdminProductEditPage() {
     tags: [] as string[],
   });
   const [featureInput, setFeatureInput] = useState('');
-  const [tagInput, setTagInput] = useState('');
   const [brands, setBrands] = useState<Brand[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(!isNew);
@@ -52,46 +51,15 @@ export default function AdminProductEditPage() {
   const [uploadingImages, setUploadingImages] = useState(false);
   const [productImages, setProductImages] = useState<string[]>([]);
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
+  const [imagePreviews, setImagePreviews] = useState<Map<string, string>>(new Map());
+  const [imageFiles, setImageFiles] = useState<Map<string, File>>(new Map());
 
   // Load brands and categories
   useEffect(() => {
     loadBrandsAndCategories();
   }, []);
 
-  useEffect(() => {
-    if (!isNew && productId) {
-      loadProduct();
-    }
-  }, [productId, isNew]);
-
-  const loadBrandsAndCategories = async () => {
-    try {
-      // Load brands
-      const { data: brandsData } = await supabase
-        .from('brands')
-        .select('id, name')
-        .order('name', { ascending: true });
-
-      if (brandsData) {
-        setBrands(brandsData);
-      }
-
-      // Load categories
-      const { data: categoriesData } = await supabase
-        .from('categories')
-        .select('id, name')
-        .eq('is_active', true)
-        .order('name', { ascending: true });
-
-      if (categoriesData) {
-        setCategories(categoriesData);
-      }
-    } catch (error) {
-      console.error('Error loading brands/categories:', error);
-    }
-  };
-
-  const loadProduct = async () => {
+  const loadProduct = useCallback(async () => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase
@@ -131,6 +99,8 @@ export default function AdminProductEditPage() {
           tags: Array.isArray(data.tags) ? data.tags : [],
         });
         setProductImages(imagesArray);
+        // Clear any existing previews when loading a product
+        setImagePreviews(new Map());
       }
     } catch (error) {
       console.error('Error loading product:', error);
@@ -138,35 +108,244 @@ export default function AdminProductEditPage() {
     } finally {
       setIsLoading(false);
     }
+  }, [productId, router]);
+
+  useEffect(() => {
+    if (!isNew && productId) {
+      loadProduct();
+    }
+  }, [productId, isNew, loadProduct]);
+
+  const loadBrandsAndCategories = async () => {
+    try {
+      // Load brands
+      const { data: brandsData } = await supabase
+        .from('brands')
+        .select('id, name')
+        .order('name', { ascending: true });
+
+      if (brandsData) {
+        setBrands(brandsData);
+      }
+
+      // Load categories
+      const { data: categoriesData } = await supabase
+        .from('categories')
+        .select('id, name')
+        .eq('is_active', true)
+        .order('name', { ascending: true });
+
+      if (categoriesData) {
+        setCategories(categoriesData);
+      }
+    } catch (error) {
+      console.error('Error loading brands/categories:', error);
+    }
   };
+
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     if (acceptedFiles.length === 0) return;
 
+    // Create object URLs for immediate preview (more reliable than FileReader)
+    const previewUrls: string[] = [];
+    const previewIdMap = new Map<string, string>();
+    const fileMap = new Map<string, File>();
+    
+    acceptedFiles.forEach((file, idx) => {
+      try {
+        // Create object URL for immediate preview
+        const objectUrl = URL.createObjectURL(file);
+        const previewId = `preview-${Date.now()}-${idx}-${Math.random().toString(36).substring(7)}`;
+        
+        previewUrls.push(previewId);
+        previewIdMap.set(previewId, objectUrl);
+        fileMap.set(previewId, file);
+        
+        console.log('Created preview:', { previewId, objectUrl, fileName: file.name });
+      } catch (error) {
+        console.error('Failed to create preview for file:', file.name, error);
+      }
+    });
+
+    // Add previews immediately so user can see images
+    if (previewUrls.length > 0) {
+      console.log('Adding previews to state:', {
+        previewUrls,
+        previewIdMap: Array.from(previewIdMap.entries()).map(([id, url]) => ({ id, url: url.substring(0, 50) }))
+      });
+      
+      setProductImages(prev => {
+        const updated = [...prev, ...previewUrls];
+        console.log('Updated productImages:', updated);
+        return updated;
+      });
+      
+      setImagePreviews(prev => {
+        const newMap = new Map(prev);
+        previewIdMap.forEach((url, id) => {
+          newMap.set(id, url);
+          console.log('Setting preview:', { id, url: url.substring(0, 50) });
+        });
+        console.log('Updated imagePreviews map size:', newMap.size);
+        return newMap;
+      });
+      
+      setImageFiles(prev => {
+        const newMap = new Map(prev);
+        fileMap.forEach((file, id) => newMap.set(id, file));
+        return newMap;
+      });
+      
+      setFormData(prev => ({
+        ...prev,
+        images: [...prev.images, ...previewUrls],
+        image: prev.image || previewUrls[0],
+      }));
+    } else {
+      console.error('No preview URLs created!');
+    }
+
     setUploadingImages(true);
     try {
-      // Upload images to Supabase
+      console.log('Starting upload of', acceptedFiles.length, 'files');
+      
+      // Upload images to Supabase (use original files, not from map)
       const results = await uploadMultipleImages(acceptedFiles);
+      
+      console.log('Upload results:', results);
+      
       const successfulUploads = results
         .filter(r => r.url && !r.error)
         .map(r => r.url);
 
+      const failedUploads = results.filter(r => r.error);
+
+      if (failedUploads.length > 0) {
+        console.error('Some uploads failed:', failedUploads);
+        alert(`Failed to upload ${failedUploads.length} image(s). Please try again.`);
+      }
+
       if (successfulUploads.length > 0) {
-        // Add uploaded URLs to images array
-        setProductImages(prev => [...prev, ...successfulUploads]);
+        console.log('Successfully uploaded images:', successfulUploads);
+        
+        // Get the preview IDs that were just added (the most recent ones)
+        const allPreviewIds = Array.from(imagePreviews.keys()).filter(id => id.startsWith('preview-'));
+        const idsToReplace = allPreviewIds.slice(-successfulUploads.length);
+        
+        console.log('Replacing preview IDs:', idsToReplace, 'with URLs:', successfulUploads);
+        
+        // Clean up object URLs before replacing
+        idsToReplace.forEach(id => {
+          const objectUrl = imagePreviews.get(id);
+          if (objectUrl && objectUrl.startsWith('blob:')) {
+            URL.revokeObjectURL(objectUrl);
+          }
+        });
+        
+        // Replace preview IDs with actual Supabase URLs
+        setProductImages(prev => {
+          const newImages = [...prev];
+          idsToReplace.forEach((id, index) => {
+            const idx = newImages.indexOf(id);
+            if (idx >= 0 && successfulUploads[index]) {
+              newImages[idx] = successfulUploads[index];
+            }
+          });
+          console.log('Updated product images:', newImages);
+          return newImages;
+        });
+        
+        // Remove preview entries for replaced IDs
+        setImagePreviews(prev => {
+          const newMap = new Map(prev);
+          idsToReplace.forEach(id => newMap.delete(id));
+          return newMap;
+        });
+        
+        // Remove file entries
+        setImageFiles(prev => {
+          const newMap = new Map(prev);
+          idsToReplace.forEach(id => newMap.delete(id));
+          return newMap;
+        });
+        
         setFormData(prev => ({
           ...prev,
-          images: [...prev.images, ...successfulUploads],
-          image: prev.image || successfulUploads[0], // Set first as primary if none exists
+          images: prev.images.map(url => {
+            const index = idsToReplace.indexOf(url);
+            return index >= 0 && successfulUploads[index] ? successfulUploads[index] : url;
+          }),
+          image: idsToReplace.includes(prev.image) 
+            ? (successfulUploads[0] || prev.image)
+            : (prev.image || successfulUploads[0]),
         }));
+      } else {
+        // If upload failed, remove the previews and clean up object URLs
+        const allPreviewIds = Array.from(imagePreviews.keys()).filter(id => id.startsWith('preview-'));
+        const idsToRemove = allPreviewIds.slice(-acceptedFiles.length);
+        
+        // Clean up object URLs
+        idsToRemove.forEach(id => {
+          const objectUrl = imagePreviews.get(id);
+          if (objectUrl && objectUrl.startsWith('blob:')) {
+            URL.revokeObjectURL(objectUrl);
+          }
+        });
+        
+        setProductImages(prev => prev.filter(url => !idsToRemove.includes(url)));
+        setImagePreviews(prev => {
+          const newMap = new Map(prev);
+          idsToRemove.forEach(id => newMap.delete(id));
+          return newMap;
+        });
+        setImageFiles(prev => {
+          const newMap = new Map(prev);
+          idsToRemove.forEach(id => newMap.delete(id));
+          return newMap;
+        });
+        setFormData(prev => ({
+          ...prev,
+          images: prev.images.filter(url => !idsToRemove.includes(url)),
+          image: idsToRemove.includes(prev.image) ? '' : prev.image,
+        }));
+        alert('Failed to upload images. Please check your storage configuration.');
       }
     } catch (error) {
       console.error('Error uploading images:', error);
-      alert('Failed to upload some images');
+      // Remove previews on error and clean up object URLs
+      const allPreviewIds = Array.from(imagePreviews.keys()).filter(id => id.startsWith('preview-'));
+      const idsToRemove = allPreviewIds.slice(-acceptedFiles.length);
+      
+      // Clean up object URLs
+      idsToRemove.forEach(id => {
+        const objectUrl = imagePreviews.get(id);
+        if (objectUrl && objectUrl.startsWith('blob:')) {
+          URL.revokeObjectURL(objectUrl);
+        }
+      });
+      
+      setProductImages(prev => prev.filter(url => !idsToRemove.includes(url)));
+      setImagePreviews(prev => {
+        const newMap = new Map(prev);
+        idsToRemove.forEach(id => newMap.delete(id));
+        return newMap;
+      });
+      setImageFiles(prev => {
+        const newMap = new Map(prev);
+        idsToRemove.forEach(id => newMap.delete(id));
+        return newMap;
+      });
+      setFormData(prev => ({
+        ...prev,
+        images: prev.images.filter(url => !idsToRemove.includes(url)),
+        image: idsToRemove.includes(prev.image) ? '' : prev.image,
+      }));
+      alert('Failed to upload images. Please try again.');
     } finally {
       setUploadingImages(false);
     }
-  }, []);
+  }, [imagePreviews]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -180,7 +359,15 @@ export default function AdminProductEditPage() {
   const removeImage = async (index: number) => {
     const imageToRemove = productImages[index];
     
-    // Delete from Supabase Storage
+    // Clean up object URL if it's a preview
+    if (imageToRemove && imageToRemove.startsWith('preview-')) {
+      const objectUrl = imagePreviews.get(imageToRemove);
+      if (objectUrl && objectUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    }
+    
+    // Delete from Supabase Storage (only if it's a real URL, not a preview)
     if (imageToRemove && imageToRemove.includes('supabase.co/storage/v1/object/public/product-images/')) {
       try {
         const urlParts = imageToRemove.split('/product-images/');
@@ -196,6 +383,20 @@ export default function AdminProductEditPage() {
     // Remove from arrays
     const newImages = productImages.filter((_, i) => i !== index);
     setProductImages(newImages);
+    
+    // Remove from preview map
+    setImagePreviews(prev => {
+      const newMap = new Map(prev);
+      newMap.delete(imageToRemove);
+      return newMap;
+    });
+    
+    // Remove from file map
+    setImageFiles(prev => {
+      const newMap = new Map(prev);
+      newMap.delete(imageToRemove);
+      return newMap;
+    });
     
     // Remove from failed images set (by URL)
     setFailedImages(prev => {
@@ -340,9 +541,10 @@ export default function AdminProductEditPage() {
           router.push('/admin/products');
         }
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error saving product:', error);
-      alert(`Failed to save product: ${error?.message || 'Unknown error'}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to save product: ${errorMessage}`);
     } finally {
       setIsSaving(false);
     }
@@ -544,39 +746,94 @@ export default function AdminProductEditPage() {
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                 {productImages.map((url, index) => {
                   const imageFailed = failedImages.has(url);
+                  // Get preview URL if this is a preview ID, otherwise use the URL directly
+                  const displayUrl = imagePreviews.get(url) || url;
+                  const isPreview = url.startsWith('preview-');
+                  const isLoading = uploadingImages && isPreview;
+                  
+                  // Debug logging
+                  console.log('Rendering image preview:', {
+                    index,
+                    url,
+                    displayUrl: displayUrl?.substring(0, 50) + '...',
+                    isPreview,
+                    hasPreview: imagePreviews.has(url),
+                    imageFailed,
+                    isValidUrl: displayUrl && (displayUrl.startsWith('blob:') || displayUrl.startsWith('http') || displayUrl.startsWith('data:'))
+                  });
                   
                   return (
                     <div key={`${url}-${index}`} className="relative group">
-                      <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden relative border-2 border-transparent hover:border-[#ba9157] transition-all">
-                        {!imageFailed && url && (url.startsWith('http') || url.startsWith('blob:') || url.startsWith('data:')) ? (
+                      <div className="aspect-square rounded-lg overflow-hidden relative border-2 border-gray-200 hover:border-[#ba9157] transition-all bg-white">
+                        {!imageFailed && displayUrl && displayUrl.trim() !== '' && (displayUrl.startsWith('blob:') || displayUrl.startsWith('http') || displayUrl.startsWith('data:')) ? (
                           <img
-                            src={url}
+                            key={`img-${url}-${index}`}
+                            src={displayUrl}
                             alt={`Preview ${index + 1}`}
                             className="w-full h-full object-cover"
-                            onError={() => {
+                            style={{ 
+                              display: 'block',
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                              backgroundColor: 'transparent',
+                              imageRendering: 'auto'
+                            }}
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              console.error('Image failed to load:', { 
+                                url, 
+                                displayUrl: displayUrl.substring(0, 100),
+                                isPreview,
+                                src: target.src.substring(0, 100)
+                              });
                               setFailedImages(prev => new Set(prev).add(url));
+                            }}
+                            onLoad={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              console.log('Image loaded successfully:', { 
+                                url, 
+                                displayUrl: displayUrl.substring(0, 100),
+                                naturalWidth: target.naturalWidth,
+                                naturalHeight: target.naturalHeight
+                              });
+                              setFailedImages(prev => {
+                                const newSet = new Set(prev);
+                                newSet.delete(url);
+                                return newSet;
+                              });
                             }}
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-gray-200">
-                            <svg className="w-8 h-8 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-                            </svg>
+                          <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                            <div className="text-center">
+                              <svg className="w-8 h-8 text-gray-400 mx-auto mb-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                              </svg>
+                              <p className="text-xs text-gray-500">No image</p>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Loading overlay - only show spinner, not black background */}
+                        {isLoading && (
+                          <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none" style={{ backgroundColor: 'rgba(255, 255, 255, 0.7)' }}>
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#ba9157]"></div>
                           </div>
                         )}
                         
                         {formData.image === url && (
-                          <div className="absolute top-2 left-2 bg-[#ba9157] text-white text-xs px-2 py-1 rounded z-10 font-medium">
+                          <div className="absolute top-2 left-2 bg-[#ba9157] text-white text-xs px-2 py-1 rounded z-30 font-medium shadow-md">
                             Primary
                           </div>
                         )}
                         
-                        <div className="absolute top-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded z-10">
+                        <div className="absolute top-2 right-2 bg-opacity-70 text-white text-xs px-2 py-1 rounded z-30 shadow-md">
                           {index + 1}/{productImages.length}
                         </div>
                         
                         {/* Control Buttons */}
-                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-opacity rounded-lg flex items-center justify-center">
+                        <div className="absolute inset-0 bg-opacity-0 group-hover:bg-opacity-40 transition-opacity rounded-lg flex items-center justify-center z-20">
                           <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button
                               type="button"
@@ -584,7 +841,7 @@ export default function AdminProductEditPage() {
                                 e.stopPropagation();
                                 setFormData(prev => ({ ...prev, image: url }));
                               }}
-                              className="bg-white text-[#2c2520] px-3 py-1 rounded text-xs font-medium hover:bg-gray-100"
+                              className="bg-white text-[#2c2520] px-3 py-1 rounded text-xs font-medium hover:bg-gray-100 shadow-lg"
                             >
                               Set Primary
                             </button>
@@ -594,7 +851,7 @@ export default function AdminProductEditPage() {
                                 e.stopPropagation();
                                 await removeImage(index);
                               }}
-                              className="bg-red-500 text-white px-3 py-1 rounded text-xs font-medium hover:bg-red-600"
+                              className="bg-red-500 text-white px-3 py-1 rounded text-xs font-medium hover:bg-red-600 shadow-lg"
                             >
                               Remove
                             </button>

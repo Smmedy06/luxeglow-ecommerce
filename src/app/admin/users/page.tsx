@@ -56,7 +56,7 @@ export default function AdminUsersPage() {
               if (authData?.user?.email) {
                 email = authData.user.email;
               }
-            } catch (e) {
+            } catch {
               // Fallback to user_id if admin API not available
             }
 

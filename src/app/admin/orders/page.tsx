@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 
@@ -12,7 +12,7 @@ interface Order {
   created_at: string;
   user_id: string;
   tracking_number?: string;
-  shipping_address?: any;
+  shipping_address?: Record<string, unknown>;
 }
 
 interface OrderItem {
@@ -36,11 +36,7 @@ export default function AdminOrdersPage() {
   const [trackingNumber, setTrackingNumber] = useState('');
   const [updatingTracking, setUpdatingTracking] = useState(false);
 
-  useEffect(() => {
-    loadOrders();
-  }, [statusFilter]);
-
-  const loadOrders = async () => {
+  const loadOrders = useCallback(async () => {
     setIsLoading(true);
     try {
       let query = supabase
@@ -64,7 +60,11 @@ export default function AdminOrdersPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [statusFilter]);
+
+  useEffect(() => {
+    loadOrders();
+  }, [loadOrders]);
 
   const loadOrderItems = async (orderId: string) => {
     try {
@@ -105,7 +105,7 @@ export default function AdminOrdersPage() {
         .eq('id', orderId);
 
       if (error) throw error;
-      loadOrders();
+      await loadOrders();
       
       // Update selected order if it's the one being changed
       if (selectedOrder && selectedOrder.id === orderId) {

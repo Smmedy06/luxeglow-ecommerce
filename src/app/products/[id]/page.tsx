@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useCart } from '@/contexts/CartContext';
 import { supabase } from '@/lib/supabase';
 import Header from '@/components/Header';
@@ -109,9 +108,10 @@ export default function ProductDetailPage() {
         
         // Reset selected image index when product loads
         setSelectedImageIndex(0);
-      } catch (error: any) {
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         console.error('Error loading product:', {
-          message: error?.message || 'Unknown error',
+          message: errorMessage,
           error: error
         });
       } finally {

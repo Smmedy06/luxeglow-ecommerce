@@ -14,7 +14,13 @@ export default function AdminDashboard() {
     brands: 0,
   });
   const [isLoading, setIsLoading] = useState(true);
-  const [recentOrders, setRecentOrders] = useState<any[]>([]);
+  const [recentOrders, setRecentOrders] = useState<Array<{
+    id: string;
+    order_number: string;
+    status: string;
+    total: number;
+    created_at: string;
+  }>>([]);
 
   useEffect(() => {
     const loadStats = async () => {
