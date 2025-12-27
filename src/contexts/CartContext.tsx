@@ -75,17 +75,35 @@ export const CartProvider = ({ children }: CartProviderProps) => {
               setCartItems(JSON.parse(savedCart));
             }
           } else if (cartData) {
-            const items: CartItem[] = cartData
+            interface CartItemWithProduct {
+              product_id: number;
+              quantity: number;
+              products: {
+                id: number;
+                brand: string;
+                name: string;
+                price: string;
+                image: string;
+                category: string;
+              } | null;
+            }
+            // Supabase returns products as a single object for foreign key relations
+            const items: CartItem[] = (cartData as unknown as CartItemWithProduct[])
               .filter(item => item.products)
-              .map((item: any) => ({
-                id: item.products.id,
-                brand: item.products.brand,
-                name: item.products.name,
-                price: item.products.price,
-                image: item.products.image,
-                category: item.products.category,
-                quantity: item.quantity,
-              }));
+              .map((item) => {
+                const product = item.products;
+                if (!product) return null;
+                return {
+                  id: product.id,
+                  brand: product.brand,
+                  name: product.name,
+                  price: product.price,
+                  image: product.image,
+                  category: product.category,
+                  quantity: item.quantity,
+                };
+              })
+              .filter((item): item is CartItem => item !== null);
             setCartItems(items);
           }
         } else {

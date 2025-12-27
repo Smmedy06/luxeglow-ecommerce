@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { setUserAsAdmin } from '@/lib/admin';
-import Link from 'next/link';
 
 interface User {
   id: string;

@@ -46,7 +46,19 @@ export default function ShopPage() {
         if (productsError) {
           console.error('Error loading products:', productsError);
         } else if (productsData) {
-          const formattedProducts: Product[] = productsData.map(product => ({
+          interface SupabaseProduct {
+            id: number;
+            brand: string;
+            name: string;
+            price: string;
+            category: string;
+            image: string;
+            description?: string | null;
+            in_stock: boolean;
+            stock_count?: number | null;
+            slug?: string | null;
+          }
+          const formattedProducts: Product[] = productsData.map((product: SupabaseProduct) => ({
             id: product.id,
             brand: product.brand,
             name: product.name,
@@ -73,21 +85,28 @@ export default function ShopPage() {
           // Fallback to hardcoded categories if table doesn't exist yet
           const categoryCounts = productsData ? [
             { name: "All Products", count: productsData.length },
-            { name: "Dermal Fillers", count: productsData.filter((p: any) => p.category === "Dermal Fillers").length },
-            { name: "Anti-Wrinkle Injections", count: productsData.filter((p: any) => p.category === "Anti-Wrinkle Injections").length },
-            { name: "Mesotherapy", count: productsData.filter((p: any) => p.category === "Mesotherapy").length },
-            { name: "Professional Skincare", count: productsData.filter((p: any) => p.category === "Professional Skincare").length },
-            { name: "Thread Lifts", count: productsData.filter((p: any) => p.category === "Thread Lifts").length },
-            { name: "Medical Devices", count: productsData.filter((p: any) => p.category === "Medical Devices").length }
+            { name: "Dermal Fillers", count: productsData.filter((p: Product) => p.category === "Dermal Fillers").length },
+            { name: "Anti-Wrinkle Injections", count: productsData.filter((p: Product) => p.category === "Anti-Wrinkle Injections").length },
+            { name: "Mesotherapy", count: productsData.filter((p: Product) => p.category === "Mesotherapy").length },
+            { name: "Professional Skincare", count: productsData.filter((p: Product) => p.category === "Professional Skincare").length },
+            { name: "Thread Lifts", count: productsData.filter((p: Product) => p.category === "Thread Lifts").length },
+            { name: "Medical Devices", count: productsData.filter((p: Product) => p.category === "Medical Devices").length }
           ] : [];
           setCategories(categoryCounts);
         } else if (categoriesData) {
           // Use database categories
+          interface Category {
+            name: string;
+            slug: string;
+            description?: string | null;
+            image?: string | null;
+            is_active: boolean;
+          }
           const categoryList = [
             { name: "All Products", count: productsData?.length || 0 },
-            ...categoriesData.map(cat => ({
+            ...categoriesData.map((cat: Category) => ({
               name: cat.name,
-              count: productsData?.filter((p: any) => p.category === cat.name).length || 0
+              count: productsData?.filter((p: Product) => p.category === cat.name).length || 0
             }))
           ];
           setCategories(categoryList);

@@ -154,7 +154,7 @@ export default function AdminDashboard() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-[#2c2520]">
-                      £{parseFloat(order.total).toFixed(2)}
+                      £{Number(order.total).toFixed(2)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-[#6b5d52]">
                       {new Date(order.created_at).toLocaleDateString()}

@@ -52,6 +52,7 @@ export default function AdminProductEditPage() {
   const [productImages, setProductImages] = useState<string[]>([]);
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
   const [imagePreviews, setImagePreviews] = useState<Map<string, string>>(new Map());
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [imageFiles, setImageFiles] = useState<Map<string, File>>(new Map());
 
   // Load brands and categories

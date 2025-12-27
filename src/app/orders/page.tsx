@@ -68,7 +68,7 @@ export default function OrdersPage() {
 
         // Load order items for each order
         const ordersWithItems = await Promise.all(
-          ordersData.map(async (order) => {
+          ordersData.map(async (order): Promise<Order | null> => {
             const { data: itemsData, error: itemsError } = await supabase
               .from('order_items')
               .select(`
@@ -124,7 +124,8 @@ export default function OrdersPage() {
           })
         );
 
-        setOrders(ordersWithItems.filter((order): order is Order => order !== null));
+        const validOrders = ordersWithItems.filter((order): order is Order => order !== null);
+        setOrders(validOrders);
       } catch (error) {
         console.error('Error loading orders:', error);
         setOrders([]);
