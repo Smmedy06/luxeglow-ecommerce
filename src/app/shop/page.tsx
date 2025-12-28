@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import Image from 'next/image';
 
 interface Product {
   id: number;
@@ -553,24 +554,12 @@ export default function ShopPage() {
                   <Link href={`/products/${product.slug || product.id}`}>
                     <div className="aspect-square bg-gray-100 rounded-t-lg overflow-hidden relative">
                       {product.image && (product.image.startsWith('http') || product.image.startsWith('blob:') || product.image.startsWith('data:')) ? (
-                        <img
+                        <Image
                           src={product.image}
                           alt={product.name}
-                          className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
-                            const parent = target.parentElement;
-                            if (parent) {
-                              parent.innerHTML = `
-                                <div class="w-full h-full flex items-center justify-center bg-gray-200">
-                                  <svg class="w-16 h-16 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
-                                  </svg>
-                                </div>
-                              `;
-                            }
-                          }}
+                          fill
+                          className="object-cover hover:scale-105 transition-transform duration-300"
+                          unoptimized={product.image.startsWith('blob:') || product.image.startsWith('data:')}
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-gray-200">

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
@@ -22,6 +22,22 @@ interface BlogPost {
   views: number;
   author_name?: string;
 }
+
+interface SupabaseBlog {
+  id: number;
+  title: string;
+  slug: string;
+  excerpt: string | null;
+  content: string;
+  featured_image: string | null;
+  category: string | null;
+  tags: string[] | null;
+  published_at: string | null;
+  created_at: string;
+  views: number;
+  author_id: string | null;
+}
+
 
 // Calculate read time
 const calculateReadTime = (content: string): string => {
@@ -79,7 +95,6 @@ const parseContent = (content: string) => {
 
 export default function BlogPostPage() {
   const params = useParams();
-  const router = useRouter();
   const [post, setPost] = useState<BlogPost | null>(null);
   const [relatedPosts, setRelatedPosts] = useState<BlogPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -173,7 +188,7 @@ export default function BlogPostPage() {
 
           const profilesMap = new Map(profiles?.map(p => [p.user_id, p.full_name]) || []);
 
-          const transformedRelated: BlogPost[] = relatedData.map((blog: any) => {
+          const transformedRelated: BlogPost[] = relatedData.map((blog: SupabaseBlog) => {
             let relatedAuthorName = 'LuxeGlow Team';
             if (blog.author_id && profilesMap.has(blog.author_id)) {
               relatedAuthorName = profilesMap.get(blog.author_id) || 'LuxeGlow Team';
@@ -328,10 +343,12 @@ export default function BlogPostPage() {
                   unoptimized={post.featured_image.startsWith('http')}
                 />
               ) : (
-                <img
+                <Image
                   src={post.featured_image}
                   alt={post.title}
-                  className="w-full h-full object-cover"
+                  fill
+                  className="object-cover"
+                  unoptimized={post.featured_image.startsWith('blob:') || post.featured_image.startsWith('data:')}
                 />
               )}
             </div>

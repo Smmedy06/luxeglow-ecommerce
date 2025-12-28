@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
+import Image from 'next/image';
 
 interface Order {
   id: string;
@@ -205,12 +206,14 @@ export default function OrdersPage() {
               <div className="lg:col-span-1">
                 <div className="bg-[#f8f7f5] rounded-lg p-6">
                   <div className="text-center mb-6">
-                    <div className="w-20 h-20 rounded-full overflow-hidden bg-[#ba9157] flex items-center justify-center mx-auto mb-4">
+                    <div className="w-20 h-20 rounded-full overflow-hidden bg-[#ba9157] flex items-center justify-center mx-auto mb-4 relative">
                       {user.avatar ? (
-                        <img
+                        <Image
                           src={user.avatar}
                           alt={user.name}
-                          className="w-full h-full object-cover"
+                          fill
+                          className="object-cover"
+                          unoptimized={user.avatar.startsWith('blob:') || user.avatar.startsWith('data:')}
                         />
                       ) : (
                         <span className="text-white text-2xl font-medium">

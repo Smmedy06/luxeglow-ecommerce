@@ -61,11 +61,32 @@ export default function BlogPage() {
       if (error) {
         console.error('Error loading blogs:', error);
       } else if (data) {
+        interface SupabaseBlog {
+          id: number;
+          title: string;
+          slug: string;
+          excerpt: string | null;
+          content: string;
+          featured_image: string | null;
+          category: string | null;
+          tags: string[] | null;
+          published_at: string | null;
+          created_at: string;
+          views: number;
+          author_id: string | null;
+        }
+
+        interface UserProfile {
+          user_id: string;
+          full_name: string;
+        }
+
         // Get unique author IDs
-        const authorIds = data.map((blog: any) => blog.author_id).filter(Boolean);
+        const blogs = data as SupabaseBlog[];
+        const authorIds = blogs.map((blog) => blog.author_id).filter(Boolean) as string[];
         
         // Fetch author names from user_profiles
-        let profilesMap = new Map();
+        let profilesMap = new Map<string, string>();
         if (authorIds.length > 0) {
           const { data: profiles } = await supabase
             .from('user_profiles')
@@ -73,12 +94,12 @@ export default function BlogPage() {
             .in('user_id', authorIds);
           
           if (profiles) {
-            profilesMap = new Map(profiles.map((p: any) => [p.user_id, p.full_name]));
+            profilesMap = new Map((profiles as UserProfile[]).map((p) => [p.user_id, p.full_name]));
           }
         }
 
         // Transform the data to match our interface
-        const transformedPosts: BlogPost[] = data.map((blog: any) => {
+        const transformedPosts: BlogPost[] = blogs.map((blog): BlogPost => {
           // Get author name from user_profiles
           let authorName = 'LuxeGlow Team';
           if (blog.author_id && profilesMap.has(blog.author_id)) {
@@ -93,10 +114,10 @@ export default function BlogPage() {
             content: blog.content,
             featured_image: blog.featured_image,
             category: blog.category,
-            tags: blog.tags || [],
+            tags: blog.tags || null,
             published_at: blog.published_at,
             created_at: blog.created_at,
-            views: blog.views || 0,
+            views: blog.views,
             author_name: authorName,
           };
         });
@@ -233,10 +254,12 @@ export default function BlogPage() {
                           unoptimized={post.featured_image.startsWith('http')}
                         />
                       ) : (
-                        <img
+                        <Image
                           src={post.featured_image}
                           alt={post.title}
-                          className="w-full h-full object-cover"
+                          fill
+                          className="object-cover"
+                          unoptimized={post.featured_image.startsWith('blob:') || post.featured_image.startsWith('data:')}
                         />
                       )
                     ) : (
@@ -319,10 +342,12 @@ export default function BlogPage() {
                           unoptimized={post.featured_image.startsWith('http')}
                         />
                       ) : (
-                        <img
+                        <Image
                           src={post.featured_image}
                           alt={post.title}
-                          className="w-full h-full object-cover"
+                          fill
+                          className="object-cover"
+                          unoptimized={post.featured_image.startsWith('blob:') || post.featured_image.startsWith('data:')}
                         />
                       )
                     ) : (

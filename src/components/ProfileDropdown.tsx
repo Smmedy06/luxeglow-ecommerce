@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function ProfileDropdown() {
   const [isOpen, setIsOpen] = useState(false);
@@ -37,12 +38,14 @@ export default function ProfileDropdown() {
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center space-x-2 text-[#6b5d52] hover:text-[#ba9157] transition-colors"
       >
-        <div className="w-8 h-8 rounded-full overflow-hidden bg-[#ba9157] flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full overflow-hidden bg-[#ba9157] flex items-center justify-center relative">
           {user.avatar ? (
-            <img
+            <Image
               src={user.avatar}
               alt={user.name}
-              className="w-full h-full object-cover"
+              fill
+              className="object-cover"
+              unoptimized={user.avatar.startsWith('blob:') || user.avatar.startsWith('data:')}
             />
           ) : (
             <span className="text-white text-sm font-medium">

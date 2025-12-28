@@ -7,6 +7,7 @@ import { useCart } from '@/contexts/CartContext';
 import { supabase } from '@/lib/supabase';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import Image from 'next/image';
 
 interface Product {
   id: number;
@@ -268,16 +269,18 @@ export default function ProductDetailPage() {
                       </svg>
                     </div>
                   ) : (
-                    <img
+                    <Image
                       src={product.images[selectedImageIndex]}
                       alt={product.name}
-                      className={`w-full h-full transition-transform duration-300 ${
+                      fill
+                      className={`transition-transform duration-300 ${
                         isZoomed ? 'scale-150' : 'scale-100'
                       }`}
                       style={{
                         objectFit: 'contain',
                         transformOrigin: `${zoomPosition.x}% ${zoomPosition.y}%`,
                       }}
+                      unoptimized={product.images[selectedImageIndex].startsWith('blob:') || product.images[selectedImageIndex].startsWith('data:')}
                       onError={() => {
                         setFailedImages(prev => new Set(prev).add(product.images![selectedImageIndex]));
                       }}
@@ -357,10 +360,12 @@ export default function ProductDetailPage() {
                         </svg>
                       </div>
                     ) : img.startsWith('http') || img.startsWith('blob:') || img.startsWith('data:') ? (
-                      <img
+                      <Image
                         src={img}
                         alt={`${product.name} thumbnail ${i + 1}`}
-                        className="w-full h-full object-cover"
+                        fill
+                        className="object-cover"
+                        unoptimized={img.startsWith('blob:') || img.startsWith('data:')}
                         onError={() => {
                           setFailedImages(prev => new Set(prev).add(img));
                         }}
@@ -682,10 +687,12 @@ export default function ProductDetailPage() {
                     <Link href={`/products/${relatedProduct.slug || relatedProduct.id}`}>
                       <div className="aspect-square bg-gray-100 rounded-t-lg overflow-hidden relative">
                         {relatedProduct.image && (relatedProduct.image.startsWith('http') || relatedProduct.image.startsWith('blob:') || relatedProduct.image.startsWith('data:')) ? (
-                          <img
+                          <Image
                             src={relatedProduct.image}
                             alt={relatedProduct.name}
-                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                            fill
+                            className="object-cover hover:scale-105 transition-transform duration-300"
+                            unoptimized={relatedProduct.image.startsWith('blob:') || relatedProduct.image.startsWith('data:')}
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center bg-gray-200">

@@ -187,7 +187,7 @@ export default function BulkUploadProducts({ onComplete }: { onComplete?: () => 
           const longDescription = row['Long Description'] ? String(row['Long Description']).trim() : '';
           
           // Try to find matching image from uploaded files
-          let imagePath = row['Image Path'] ? String(row['Image Path']).trim() : '';
+          const imagePath = row['Image Path'] ? String(row['Image Path']).trim() : '';
           const matchingImage = findMatchingImage(productName, imageFiles);
 
           // Find category
@@ -271,7 +271,26 @@ export default function BulkUploadProducts({ onComplete }: { onComplete?: () => 
           }
 
           // Prepare product data
-          const productData: any = {
+          interface ProductInsertData {
+            name: string;
+            price: string;
+            category: string;
+            category_id: number | null;
+            brand_id: number | null;
+            brand: string;
+            description: string | null;
+            short_description: string | null;
+            in_stock: boolean;
+            stock_count: number;
+            discount_percentage_5_9: number;
+            discount_percentage_10_plus: number;
+            is_featured: boolean;
+            slug: string;
+            image: string;
+            images: string[];
+          }
+
+          const productData: ProductInsertData = {
             name: productName,
             price: `£${basePrice.toFixed(2)}`,
             category: categoryName,
@@ -343,7 +362,7 @@ export default function BulkUploadProducts({ onComplete }: { onComplete?: () => 
           className="block w-full text-sm text-[#6b5d52] file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-[#ba9157] file:text-white hover:file:bg-[#a67d4a] file:cursor-pointer disabled:opacity-50"
         />
         <p className="text-xs text-[#6b5d52] mt-2">
-          Select all product images. Images will be matched to products by name (e.g., "Ami Eyes Product" matches "Ami-Eyes-Product.jpg")
+          Select all product images. Images will be matched to products by name (e.g., &quot;Ami Eyes Product&quot; matches &quot;Ami-Eyes-Product.jpg&quot;)
         </p>
         {imageFiles.length > 0 && (
           <p className="text-xs text-green-600 mt-1">

@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { uploadMultipleImages, deleteImage } from '@/lib/imageUpload';
 import { useDropzone } from 'react-dropzone';
 import Link from 'next/link';
+import Image from 'next/image';
 
 interface Brand {
   id: number;
@@ -770,36 +771,25 @@ export default function AdminProductEditPage() {
                     <div key={`${url}-${index}`} className="relative group">
                       <div className="aspect-square rounded-lg overflow-hidden relative border-2 border-gray-200 hover:border-[#ba9157] transition-all bg-white">
                         {!imageFailed && displayUrl && displayUrl.trim() !== '' && (displayUrl.startsWith('blob:') || displayUrl.startsWith('http') || displayUrl.startsWith('data:')) ? (
-                          <img
+                          <Image
                             key={`img-${url}-${index}`}
                             src={displayUrl}
                             alt={`Preview ${index + 1}`}
-                            className="w-full h-full object-cover"
-                            style={{ 
-                              display: 'block',
-                              width: '100%',
-                              height: '100%',
-                              objectFit: 'cover',
-                              backgroundColor: 'transparent',
-                              imageRendering: 'auto'
-                            }}
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement;
+                            fill
+                            className="object-cover"
+                            unoptimized={displayUrl.startsWith('blob:') || displayUrl.startsWith('data:')}
+                            onError={() => {
                               console.error('Image failed to load:', { 
                                 url, 
                                 displayUrl: displayUrl.substring(0, 100),
-                                isPreview,
-                                src: target.src.substring(0, 100)
+                                isPreview
                               });
                               setFailedImages(prev => new Set(prev).add(url));
                             }}
-                            onLoad={(e) => {
-                              const target = e.target as HTMLImageElement;
-                              console.log('Image loaded successfully:', { 
+                            onLoad={() => {
+                              console.log('Image loaded successfully:', {
                                 url, 
-                                displayUrl: displayUrl.substring(0, 100),
-                                naturalWidth: target.naturalWidth,
-                                naturalHeight: target.naturalHeight
+                                displayUrl: displayUrl.substring(0, 100)
                               });
                               setFailedImages(prev => {
                                 const newSet = new Set(prev);

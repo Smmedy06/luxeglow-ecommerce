@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 
 interface Product {
@@ -115,10 +116,12 @@ export default function FeaturedProducts() {
                 <Link href={`/products/${product.slug || product.id}`}>
                   <div className="aspect-square bg-gray-100 rounded-t-lg overflow-hidden relative">
                     {product.image && (product.image.startsWith('http') || product.image.startsWith('blob:') || product.image.startsWith('data:')) ? (
-                      <img
+                      <Image
                         src={product.image}
                         alt={product.name}
-                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                        fill
+                        className="object-cover hover:scale-105 transition-transform duration-300"
+                        unoptimized={product.image.startsWith('blob:') || product.image.startsWith('data:')}
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center bg-gray-200">
