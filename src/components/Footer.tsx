@@ -87,12 +87,7 @@ export default function Footer() {
               </li>
               <li>
                 <Link href="/shipping" className="text-[#6b5d52] hover:text-[#ba9157] transition-colors">
-                  Shipping Info
-                </Link>
-              </li>
-              <li>
-                <Link href="/returns" className="text-[#6b5d52] hover:text-[#ba9157] transition-colors">
-                  Returns Policy
+                  Shipping & Returns
                 </Link>
               </li>
               <li>
@@ -111,13 +106,13 @@ export default function Footer() {
               © 2024 LuxeGlow. All rights reserved.
             </p>
             <div className="flex space-x-6 mt-4 md:mt-0">
-              <Link href="/terms" className="text-[#6b5d52] hover:text-[#ba9157] text-sm transition-colors">
+              <Link href="/privacy#terms" className="text-[#6b5d52] hover:text-[#ba9157] text-sm transition-colors">
                 Terms
               </Link>
-              <Link href="/privacy" className="text-[#6b5d52] hover:text-[#ba9157] text-sm transition-colors">
+              <Link href="/privacy#privacy" className="text-[#6b5d52] hover:text-[#ba9157] text-sm transition-colors">
                 Privacy
               </Link>
-              <Link href="/cookies" className="text-[#6b5d52] hover:text-[#ba9157] text-sm transition-colors">
+              <Link href="/privacy#cookies" className="text-[#6b5d52] hover:text-[#ba9157] text-sm transition-colors">
                 Cookies
               </Link>
             </div>

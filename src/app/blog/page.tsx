@@ -1,136 +1,159 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
+import Image from 'next/image';
 
 interface BlogPost {
   id: number;
   title: string;
-  excerpt: string;
+  slug: string;
+  excerpt: string | null;
   content: string;
-  author: string;
-  authorImage: string;
-  publishDate: string;
-  readTime: string;
-  category: string;
-  image: string;
-  featured: boolean;
-  tags: string[];
+  featured_image: string | null;
+  category: string | null;
+  tags: string[] | null;
+  published_at: string | null;
+  created_at: string;
+  views: number;
+  author_name?: string;
 }
 
-const blogPosts: BlogPost[] = [
-  {
-    id: 1,
-    title: "The Science Behind Vitamin C: Why It's Essential for Radiant Skin",
-    excerpt: "Discover the powerful benefits of Vitamin C in skincare and how it transforms your skin's appearance.",
-    content: "Vitamin C is one of the most researched and effective ingredients in skincare...",
-    author: "Dr. Sarah Mitchell",
-    authorImage: "author-1",
-    publishDate: "2024-01-15",
-    readTime: "5 min read",
-    category: "Skincare Science",
-    image: "blog-1",
-    featured: true,
-    tags: ["Vitamin C", "Skincare", "Anti-aging", "Science"]
-  },
-  {
-    id: 2,
-    title: "Complete Guide to Dermal Fillers: What You Need to Know",
-    excerpt: "Everything you need to know about dermal fillers, from types to aftercare tips.",
-    content: "Dermal fillers have revolutionized the aesthetics industry...",
-    author: "Dr. Emily Chen",
-    authorImage: "author-2",
-    publishDate: "2024-01-12",
-    readTime: "8 min read",
-    category: "Aesthetics",
-    image: "blog-2",
-    featured: true,
-    tags: ["Dermal Fillers", "Aesthetics", "Beauty", "Treatment"]
-  },
-  {
-    id: 3,
-    title: "Morning vs Evening Skincare Routines: Optimizing Your Regimen",
-    excerpt: "Learn how to create the perfect morning and evening skincare routines for maximum results.",
-    content: "Your skin has different needs throughout the day...",
-    author: "Lisa Thompson",
-    authorImage: "author-3",
-    publishDate: "2024-01-10",
-    readTime: "6 min read",
-    category: "Skincare Tips",
-    image: "blog-3",
-    featured: false,
-    tags: ["Skincare Routine", "Morning", "Evening", "Tips"]
-  },
-  {
-    id: 4,
-    title: "Understanding Skin Types: Finding Your Perfect Match",
-    excerpt: "Identify your skin type and learn how to choose products that work best for you.",
-    content: "Understanding your skin type is the foundation of effective skincare...",
-    author: "Dr. Michael Rodriguez",
-    authorImage: "author-4",
-    publishDate: "2024-01-08",
-    readTime: "7 min read",
-    category: "Skincare Basics",
-    image: "blog-4",
-    featured: false,
-    tags: ["Skin Types", "Skincare Basics", "Products", "Guide"]
-  },
-  {
-    id: 5,
-    title: "The Future of Aesthetic Treatments: Trends to Watch",
-    excerpt: "Explore the latest trends and innovations in aesthetic treatments and skincare technology.",
-    content: "The aesthetic industry is constantly evolving with new technologies...",
-    author: "Dr. Amanda Foster",
-    authorImage: "author-5",
-    publishDate: "2024-01-05",
-    readTime: "9 min read",
-    category: "Industry Trends",
-    image: "blog-5",
-    featured: false,
-    tags: ["Aesthetics", "Technology", "Trends", "Innovation"]
-  },
-  {
-    id: 6,
-    title: "Natural vs Synthetic Ingredients: Making Informed Choices",
-    excerpt: "Compare natural and synthetic skincare ingredients to make informed decisions about your products.",
-    content: "The debate between natural and synthetic ingredients continues...",
-    author: "Dr. Jennifer Lee",
-    authorImage: "author-6",
-    publishDate: "2024-01-03",
-    readTime: "6 min read",
-    category: "Ingredients",
-    image: "blog-6",
-    featured: false,
-    tags: ["Natural", "Synthetic", "Ingredients", "Comparison"]
-  }
-];
+// Calculate read time based on content length
+const calculateReadTime = (content: string): string => {
+  const wordsPerMinute = 200;
+  const words = content.split(/\s+/).length;
+  const minutes = Math.ceil(words / wordsPerMinute);
+  return `${minutes} min read`;
+};
 
-const categories = [
-  "All Posts",
-  "Skincare Science",
-  "Aesthetics",
-  "Skincare Tips",
-  "Skincare Basics",
-  "Industry Trends",
-  "Ingredients"
-];
+// Format date
+const formatDate = (dateString: string | null): string => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+};
 
 export default function BlogPage() {
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("All Posts");
   const [searchTerm, setSearchTerm] = useState("");
 
+  useEffect(() => {
+    loadBlogs();
+  }, []);
+
+  const loadBlogs = async () => {
+    setIsLoading(true);
+    try {
+      // Fetch published blogs
+      const { data, error } = await supabase
+        .from('blogs')
+        .select('*')
+        .eq('is_published', true)
+        .order('published_at', { ascending: false, nullsFirst: false })
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading blogs:', error);
+      } else if (data) {
+        // Get unique author IDs
+        const authorIds = data.map((blog: any) => blog.author_id).filter(Boolean);
+        
+        // Fetch author names from user_profiles
+        let profilesMap = new Map();
+        if (authorIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from('user_profiles')
+            .select('user_id, full_name')
+            .in('user_id', authorIds);
+          
+          if (profiles) {
+            profilesMap = new Map(profiles.map((p: any) => [p.user_id, p.full_name]));
+          }
+        }
+
+        // Transform the data to match our interface
+        const transformedPosts: BlogPost[] = data.map((blog: any) => {
+          // Get author name from user_profiles
+          let authorName = 'LuxeGlow Team';
+          if (blog.author_id && profilesMap.has(blog.author_id)) {
+            authorName = profilesMap.get(blog.author_id) || 'LuxeGlow Team';
+          }
+
+          return {
+            id: blog.id,
+            title: blog.title,
+            slug: blog.slug,
+            excerpt: blog.excerpt,
+            content: blog.content,
+            featured_image: blog.featured_image,
+            category: blog.category,
+            tags: blog.tags || [],
+            published_at: blog.published_at,
+            created_at: blog.created_at,
+            views: blog.views || 0,
+            author_name: authorName,
+          };
+        });
+
+        setBlogPosts(transformedPosts);
+      }
+    } catch (error) {
+      console.error('Error loading blogs:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Get unique categories from blog posts
+  const categories = [
+    "All Posts",
+    ...Array.from(new Set(blogPosts.map(post => post.category).filter(Boolean))) as string[]
+  ];
+
+  // Filter posts
   const filteredPosts = blogPosts.filter(post => {
     const matchesCategory = selectedCategory === "All Posts" || post.category === selectedCategory;
     const matchesSearch = post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         post.excerpt.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         post.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
+                         (post.excerpt && post.excerpt.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                         (post.tags && post.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase())));
     return matchesCategory && matchesSearch;
   });
 
-  const featuredPosts = blogPosts.filter(post => post.featured);
-  const regularPosts = filteredPosts.filter(post => !post.featured);
+  // Featured posts (first 2 published posts, or posts with "featured" in tags)
+  const featuredPosts = blogPosts
+    .filter(post => post.tags && post.tags.some(tag => tag.toLowerCase().includes('featured')))
+    .slice(0, 2);
+  
+  // If no featured posts, use first 2 published posts
+  const displayFeaturedPosts = featuredPosts.length > 0 ? featuredPosts : blogPosts.slice(0, 2);
+  const regularPosts = filteredPosts.filter(post => 
+    !displayFeaturedPosts.some(featured => featured.id === post.id)
+  );
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen">
+        <Header />
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="animate-pulse space-y-8">
+            <div className="h-12 bg-gray-200 rounded w-1/3"></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-gray-200 rounded-lg h-64"></div>
+              ))}
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen">
@@ -183,7 +206,7 @@ export default function BlogPage() {
                       : 'bg-gray-100 text-[#6b5d52] hover:bg-gray-200'
                   }`}
                 >
-                  {category}
+                  {category || 'Uncategorized'}
                 </button>
               ))}
             </div>
@@ -193,48 +216,68 @@ export default function BlogPage() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Featured Posts */}
-        {selectedCategory === "All Posts" && (
+        {selectedCategory === "All Posts" && displayFeaturedPosts.length > 0 && (
           <section className="mb-16">
             <h2 className="text-3xl font-bold text-[#2c2520] mb-8">Featured Articles</h2>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {featuredPosts.map((post) => (
+              {displayFeaturedPosts.map((post) => (
                 <article key={post.id} className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
                   <div className="aspect-video relative">
-                    <div className="absolute inset-0 bg-gradient-to-br from-[#ba9157] to-[#a67d4a] flex items-center justify-center">
-                      <div className="text-center text-white">
-                        <svg className="w-16 h-16 mx-auto mb-4 opacity-80" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-                        </svg>
-                        <p className="text-sm opacity-90">Featured Article</p>
+                    {post.featured_image ? (
+                      post.featured_image.startsWith('http') || post.featured_image.startsWith('/') ? (
+                        <Image
+                          src={post.featured_image}
+                          alt={post.title}
+                          fill
+                          className="object-cover"
+                          unoptimized={post.featured_image.startsWith('http')}
+                        />
+                      ) : (
+                        <img
+                          src={post.featured_image}
+                          alt={post.title}
+                          className="w-full h-full object-cover"
+                        />
+                      )
+                    ) : (
+                      <div className="absolute inset-0 bg-gradient-to-br from-[#ba9157] to-[#a67d4a] flex items-center justify-center">
+                        <div className="text-center text-white">
+                          <svg className="w-16 h-16 mx-auto mb-4 opacity-80" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                          </svg>
+                          <p className="text-sm opacity-90">Featured Article</p>
+                        </div>
                       </div>
-                    </div>
-                    <div className="absolute top-4 left-4">
-                      <span className="bg-[#ba9157] text-white px-3 py-1 rounded-full text-sm font-medium">
-                        {post.category}
-                      </span>
-                    </div>
+                    )}
+                    {post.category && (
+                      <div className="absolute top-4 left-4">
+                        <span className="bg-[#ba9157] text-white px-3 py-1 rounded-full text-sm font-medium">
+                          {post.category}
+                        </span>
+                      </div>
+                    )}
                   </div>
                   <div className="p-6">
                     <h3 className="text-xl font-bold text-[#2c2520] mb-3 line-clamp-2">
                       {post.title}
                     </h3>
                     <p className="text-[#6b5d52] mb-4 line-clamp-3">
-                      {post.excerpt}
+                      {post.excerpt || post.content.substring(0, 150) + '...'}
                     </p>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
                         <div className="w-8 h-8 bg-[#ba9157] rounded-full flex items-center justify-center">
                           <span className="text-white text-sm font-medium">
-                            {post.author.split(' ').map(n => n[0]).join('')}
+                            {post.author_name?.split(' ').map(n => n[0]).join('') || 'LG'}
                           </span>
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-[#2c2520]">{post.author}</p>
-                          <p className="text-xs text-[#6b5d52]">{post.publishDate}</p>
+                          <p className="text-sm font-medium text-[#2c2520]">{post.author_name}</p>
+                          <p className="text-xs text-[#6b5d52]">{formatDate(post.published_at || post.created_at)}</p>
                         </div>
                       </div>
                       <Link
-                        href={`/blog/${post.id}`}
+                        href={`/blog/${post.slug || post.id}`}
                         className="text-[#ba9157] hover:text-[#a67d4a] font-medium text-sm"
                       >
                         Read More →
@@ -250,7 +293,7 @@ export default function BlogPage() {
         {/* Regular Posts */}
         <section>
           <h2 className="text-3xl font-bold text-[#2c2520] mb-8">
-            {selectedCategory === "All Posts" ? "All Articles" : selectedCategory}
+            {selectedCategory === "All Posts" ? "All Articles" : selectedCategory || "All Articles"}
           </h2>
           
           {regularPosts.length === 0 ? (
@@ -266,42 +309,62 @@ export default function BlogPage() {
               {regularPosts.map((post) => (
                 <article key={post.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
                   <div className="aspect-video relative">
-                    <div className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
-                      <div className="text-center text-gray-600">
-                        <svg className="w-12 h-12 mx-auto mb-2" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-                        </svg>
-                        <p className="text-xs">Article Image</p>
+                    {post.featured_image ? (
+                      post.featured_image.startsWith('http') || post.featured_image.startsWith('/') ? (
+                        <Image
+                          src={post.featured_image}
+                          alt={post.title}
+                          fill
+                          className="object-cover"
+                          unoptimized={post.featured_image.startsWith('http')}
+                        />
+                      ) : (
+                        <img
+                          src={post.featured_image}
+                          alt={post.title}
+                          className="w-full h-full object-cover"
+                        />
+                      )
+                    ) : (
+                      <div className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
+                        <div className="text-center text-gray-600">
+                          <svg className="w-12 h-12 mx-auto mb-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                          </svg>
+                          <p className="text-xs">Article Image</p>
+                        </div>
                       </div>
-                    </div>
-                    <div className="absolute top-3 left-3">
-                      <span className="bg-white text-[#ba9157] px-2 py-1 rounded-full text-xs font-medium shadow-sm">
-                        {post.category}
-                      </span>
-                    </div>
+                    )}
+                    {post.category && (
+                      <div className="absolute top-3 left-3">
+                        <span className="bg-white text-[#ba9157] px-2 py-1 rounded-full text-xs font-medium shadow-sm">
+                          {post.category}
+                        </span>
+                      </div>
+                    )}
                   </div>
                   <div className="p-5">
                     <h3 className="text-lg font-semibold text-[#2c2520] mb-2 line-clamp-2">
                       {post.title}
                     </h3>
                     <p className="text-[#6b5d52] text-sm mb-4 line-clamp-3">
-                      {post.excerpt}
+                      {post.excerpt || post.content.substring(0, 120) + '...'}
                     </p>
                     <div className="flex items-center justify-between text-xs text-[#6b5d52] mb-4">
-                      <span>{post.readTime}</span>
-                      <span>{post.publishDate}</span>
+                      <span>{calculateReadTime(post.content)}</span>
+                      <span>{formatDate(post.published_at || post.created_at)}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
                         <div className="w-6 h-6 bg-[#ba9157] rounded-full flex items-center justify-center">
                           <span className="text-white text-xs font-medium">
-                            {post.author.split(' ').map(n => n[0]).join('')}
+                            {post.author_name?.split(' ').map(n => n[0]).join('') || 'LG'}
                           </span>
                         </div>
-                        <span className="text-sm text-[#2c2520]">{post.author}</span>
+                        <span className="text-sm text-[#2c2520]">{post.author_name}</span>
                       </div>
                       <Link
-                        href={`/blog/${post.id}`}
+                        href={`/blog/${post.slug || post.id}`}
                         className="text-[#ba9157] hover:text-[#a67d4a] font-medium text-sm"
                       >
                         Read More →
@@ -315,18 +378,18 @@ export default function BlogPage() {
         </section>
 
         {/* Newsletter Signup */}
-        <section className="mt-16 bg-gradient-to-r from-[#ba9157] to-[#a67d4a] rounded-2xl p-8 text-center">
-          <h2 className="text-2xl font-bold text-white mb-4">Stay Updated</h2>
-          <p className="text-white/90 mb-6 max-w-2xl mx-auto">
+        <section className="mt-16 bg-gradient-to-r from-[#ba9157] to-[#a67d4a] rounded-2xl p-8 md:p-12 text-center">
+          <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">Stay Updated</h2>
+          <p className="text-white/90 mb-8 max-w-2xl mx-auto text-base md:text-lg leading-relaxed">
             Get the latest skincare tips, beauty trends, and exclusive offers delivered to your inbox.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
+          <div className="flex flex-col sm:flex-row gap-3 max-w-lg mx-auto">
             <input
               type="email"
               placeholder="Enter your email"
-              className="flex-1 px-4 py-3 rounded-lg border-0 focus:outline-none focus:ring-2 focus:ring-white/50"
+              className="flex-1 px-5 py-3.5 rounded-lg border-0 bg-white text-[#2c2520] placeholder-gray-400 focus:outline-none transition-all"
             />
-            <button className="bg-white text-[#ba9157] px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors">
+            <button className="bg-white text-[#ba9157] px-8 py-3.5 rounded-lg font-semibold hover:bg-gray-50 transition-colors whitespace-nowrap shadow-sm">
               Subscribe
             </button>
           </div>

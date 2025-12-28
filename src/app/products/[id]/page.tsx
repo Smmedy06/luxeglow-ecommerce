@@ -17,12 +17,15 @@ interface Product {
   image: string;
   images?: string[];
   description: string;
+  shortDescription?: string;
   inStock: boolean;
   stockCount?: number;
   slug?: string;
   features?: string[];
   salePrice?: string;
   onSale?: boolean;
+  discountPercentage5_9?: number;
+  discountPercentage10Plus?: number;
 }
 
 export default function ProductDetailPage() {
@@ -35,6 +38,7 @@ export default function ProductDetailPage() {
   const [isZoomed, setIsZoomed] = useState(false);
   const [zoomPosition, setZoomPosition] = useState({ x: 0, y: 0 });
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
+  const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
 
   useEffect(() => {
     const loadProduct = async () => {
@@ -89,7 +93,7 @@ export default function ProductDetailPage() {
           ? productData.images 
           : (productData.image ? [productData.image] : []);
         
-        setProduct({
+        const loadedProduct = {
           id: productData.id,
           brand: productData.brand,
           name: productData.name,
@@ -97,17 +101,54 @@ export default function ProductDetailPage() {
           category: productData.category,
           image: allImages[0] || productData.image,
           images: allImages,
-          description: productData.description || "This is a premium skincare product designed to provide exceptional results.",
+          description: productData.description || "",
+          shortDescription: productData.short_description || "",
           inStock: productData.in_stock,
           stockCount: productData.stock_count || undefined,
           slug: productData.slug,
           features: productData.features || [],
           salePrice: productData.sale_price,
           onSale: productData.on_sale || false,
-        });
+          discountPercentage5_9: productData.discount_percentage_5_9 || 0,
+          discountPercentage10Plus: productData.discount_percentage_10_plus || 0,
+        };
+        
+        setProduct(loadedProduct);
         
         // Reset selected image index when product loads
         setSelectedImageIndex(0);
+
+        // Load related products from the same category
+        const { data: relatedData, error: relatedError } = await supabase
+          .from('products')
+          .select('id, brand, name, price, image, slug, category')
+          .eq('category', loadedProduct.category)
+          .eq('in_stock', true)
+          .neq('id', loadedProduct.id)
+          .limit(4)
+          .order('created_at', { ascending: false });
+
+        if (!relatedError && relatedData) {
+          setRelatedProducts(relatedData.map(p => ({
+            id: p.id,
+            brand: p.brand,
+            name: p.name,
+            price: p.price,
+            category: p.category,
+            image: p.image,
+            images: [],
+            description: '',
+            shortDescription: '',
+            inStock: true,
+            stockCount: undefined,
+            slug: p.slug || `product-${p.id}`,
+            features: [],
+            salePrice: undefined,
+            onSale: false,
+            discountPercentage5_9: 0,
+            discountPercentage10Plus: 0,
+          })));
+        }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         console.error('Error loading product:', {
@@ -124,13 +165,29 @@ export default function ProductDetailPage() {
 
   const handleAddToCart = () => {
     if (product && product.inStock) {
+      // Calculate price based on quantity and discounts
+      const basePrice = parseFloat(product.price.replace('£', '').replace('$', ''));
+      let discount = 0;
+      
+      if (quantity >= 10 && product.discountPercentage10Plus) {
+        discount = product.discountPercentage10Plus;
+      } else if (quantity >= 5 && product.discountPercentage5_9) {
+        discount = product.discountPercentage5_9;
+      }
+      
+      const finalPrice = discount > 0 
+        ? basePrice * (1 - discount / 100)
+        : basePrice;
+      
+      const priceString = `£${finalPrice.toFixed(2)}`;
+      
       // Add the product to cart with the selected quantity
       for (let i = 0; i < quantity; i++) {
         addToCart({
           id: product.id,
           brand: product.brand,
           name: product.name,
-          price: product.price,
+          price: priceString,
           image: product.image,
           category: product.category,
         });
@@ -322,33 +379,59 @@ export default function ProductDetailPage() {
           </div>
 
           {/* Product Info */}
-          <div className="space-y-6">
-            <div>
-              <p className="text-sm text-[#ba9157] uppercase tracking-wider mb-2">
+          <div className="space-y-4">
+            {/* Brand */}
+            {product.brand && (
+              <p className="text-sm text-[#ba9157] uppercase tracking-wider">
                 {product.brand}
               </p>
-              <h1 className="text-3xl lg:text-4xl font-bold text-[#2c2520] mb-4">
-                {product.name}
-              </h1>
-              <div className="flex items-center gap-3 mb-4">
-                {product.onSale && product.salePrice ? (
+            )}
+            
+            {/* Product Title */}
+            <h1 className="text-3xl lg:text-4xl font-bold text-[#2c2520]">
+              {product.name}
+            </h1>
+
+            {/* Price */}
+            <div className="flex items-center gap-3">
+              {(() => {
+                const basePrice = parseFloat(product.price.replace('£', '').replace('$', ''));
+                let currentPrice = basePrice;
+                let discount = 0;
+                
+                if (quantity >= 10 && product.discountPercentage10Plus) {
+                  discount = product.discountPercentage10Plus;
+                } else if (quantity >= 5 && product.discountPercentage5_9) {
+                  discount = product.discountPercentage5_9;
+                }
+                
+                if (discount > 0) {
+                  currentPrice = basePrice * (1 - discount / 100);
+                }
+                
+                return (
                   <>
                     <p className="text-3xl font-bold text-[#2c2520]">
-                      ${product.salePrice}
+                      £{currentPrice.toFixed(2)}
                     </p>
-                    <p className="text-xl text-gray-400 line-through">
-                      ${product.price}
-                    </p>
-                    <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded">
-                      SALE
-                    </span>
+                    {discount > 0 && (
+                      <p className="text-xl text-gray-400 line-through">
+                        £{basePrice.toFixed(2)}
+                      </p>
+                    )}
+                    {product.onSale && product.salePrice && (
+                      <>
+                        <p className="text-xl text-gray-400 line-through">
+                          £{basePrice.toFixed(2)}
+                        </p>
+                        <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded">
+                          SALE
+                        </span>
+                      </>
+                    )}
                   </>
-                ) : (
-                  <p className="text-3xl font-bold text-[#2c2520]">
-                    ${product.price}
-                  </p>
-                )}
-              </div>
+                );
+              })()}
             </div>
 
             {/* Stock Status */}
@@ -357,7 +440,7 @@ export default function ProductDetailPage() {
                 <>
                   <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                   <span className="text-green-600 font-medium">
-                    In Stock ({product.stockCount} available)
+                    In Stock {product.stockCount ? `(${product.stockCount} available)` : '(available)'}
                   </span>
                 </>
               ) : (
@@ -368,13 +451,80 @@ export default function ProductDetailPage() {
               )}
             </div>
 
-            {/* Description */}
-            <div>
-              <h3 className="text-lg font-semibold text-[#2c2520] mb-3">Description</h3>
-              <p className="text-[#6b5d52] leading-relaxed">
-                {product.description}
-              </p>
-            </div>
+            {/* Short Description */}
+            {product.shortDescription && (
+              <div className="mt-4">
+                <p className="text-[#6b5d52] leading-relaxed">
+                  {product.shortDescription}
+                </p>
+              </div>
+            )}
+
+            {/* Product Overview */}
+            {product.description && (
+              <div className="mt-4">
+                <p className="text-[#6b5d52] leading-relaxed">
+                  {product.description.split('\n')[0] || product.description.substring(0, 200)}
+                </p>
+              </div>
+            )}
+
+            {/* Target Concerns / Features */}
+            {product.features && product.features.length > 0 && (
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold text-[#2c2520] mb-3">Target Concerns</h3>
+                <ul className="space-y-2 text-[#6b5d52]">
+                  {product.features.map((feature, index) => (
+                    <li key={index} className="flex items-start">
+                      <span className="mr-2 text-[#ba9157]">•</span>
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Buy More, Save More Table */}
+            {(product.discountPercentage5_9 || product.discountPercentage10Plus) && (
+              <div className="border-t border-gray-200 pt-6 mb-6">
+                <h3 className="text-lg font-semibold text-[#2c2520] mb-4">Buy More, Save More</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="px-4 py-3 text-left text-sm font-medium text-[#6b5d52] border border-gray-200">Quantity Range</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-[#6b5d52] border border-gray-200">Discount</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-[#6b5d52] border border-gray-200">Price Per Unit</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {product.discountPercentage5_9 && (
+                        <tr className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-sm text-[#2c2520] border border-gray-200">5-9</td>
+                          <td className="px-4 py-3 text-sm text-[#2c2520] border border-gray-200">
+                            £{((parseFloat(product.price.replace('£', '').replace('$', '')) * product.discountPercentage5_9) / 100).toFixed(2)}
+                          </td>
+                          <td className="px-4 py-3 text-sm font-medium text-[#2c2520] border border-gray-200">
+                            £{(parseFloat(product.price.replace('£', '').replace('$', '')) * (1 - product.discountPercentage5_9 / 100)).toFixed(2)}
+                          </td>
+                        </tr>
+                      )}
+                      {product.discountPercentage10Plus && (
+                        <tr className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-sm text-[#2c2520] border border-gray-200">10+</td>
+                          <td className="px-4 py-3 text-sm text-[#2c2520] border border-gray-200">
+                            £{((parseFloat(product.price.replace('£', '').replace('$', '')) * product.discountPercentage10Plus) / 100).toFixed(2)}
+                          </td>
+                          <td className="px-4 py-3 text-sm font-medium text-[#2c2520] border border-gray-200">
+                            £{(parseFloat(product.price.replace('£', '').replace('$', '')) * (1 - product.discountPercentage10Plus / 100)).toFixed(2)}
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
 
             {/* Quantity and Add to Cart */}
             <div className="space-y-4">
@@ -382,19 +532,47 @@ export default function ProductDetailPage() {
                 <label htmlFor="quantity" className="block text-sm font-medium text-[#2c2520] mb-2">
                   Quantity
                 </label>
-                <select
-                  id="quantity"
-                  value={quantity}
-                  onChange={(e) => setQuantity(parseInt(e.target.value))}
-                  className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#ba9157] focus:border-transparent"
-                  disabled={!product.inStock}
-                >
-                  {[...Array(Math.min(10, product.stockCount || 0))].map((_, i) => (
-                    <option key={i + 1} value={i + 1}>
-                      {i + 1}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                    disabled={!product.inStock || quantity <= 1}
+                    className={`w-10 h-10 rounded-lg border border-gray-300 flex items-center justify-center transition-colors ${
+                      !product.inStock || quantity <= 1
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-white text-[#2c2520] hover:bg-gray-50'
+                    }`}
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                    </svg>
+                  </button>
+                  <input
+                    type="number"
+                    id="quantity"
+                    min="1"
+                    max={product.stockCount || 999}
+                    value={quantity}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value) || 1;
+                      setQuantity(Math.max(1, Math.min(val, product.stockCount || 999)));
+                    }}
+                    className="w-20 text-center border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#ba9157] focus:border-transparent"
+                    disabled={!product.inStock}
+                  />
+                  <button
+                    onClick={() => setQuantity(Math.min((product.stockCount || 999), quantity + 1))}
+                    disabled={!product.inStock || quantity >= (product.stockCount || 999)}
+                    className={`w-10 h-10 rounded-lg border border-gray-300 flex items-center justify-center transition-colors ${
+                      !product.inStock || quantity >= (product.stockCount || 999)
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-white text-[#2c2520] hover:bg-gray-50'
+                    }`}
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                  </button>
+                </div>
               </div>
 
               <button
@@ -410,24 +588,139 @@ export default function ProductDetailPage() {
               </button>
             </div>
 
-            {/* Product Features - Dynamic from database */}
+          </div>
+        </div>
+
+        {/* Trust Badges Banner - Full Width */}
+        <div className="bg-[#f5f3f0] py-12 my-12 w-full">
+          <div className="px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto">
+              <div className="flex items-start space-x-4">
+                <div className="flex-shrink-0">
+                  <svg className="w-10 h-10 text-[#ba9157]" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                  </svg>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-[#2c2520] mb-1 text-lg">Authenticity</h4>
+                  <p className="text-sm text-[#6b5d52]">100% authentic and CE certified</p>
+                </div>
+              </div>
+              <div className="flex items-start space-x-4">
+                <div className="flex-shrink-0">
+                  <svg className="w-10 h-10 text-[#ba9157]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-[#2c2520] mb-1 text-lg">Next Day Shipping</h4>
+                  <p className="text-sm text-[#6b5d52]">On all UK orders</p>
+                </div>
+              </div>
+              <div className="flex items-start space-x-4">
+                <div className="flex-shrink-0">
+                  <svg className="w-10 h-10 text-[#ba9157]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-[#2c2520] mb-1 text-lg">Expert Support</h4>
+                  <p className="text-sm text-[#6b5d52]">Team of specialists available</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Product Description Section */}
+        <div className="w-full px-4 sm:px-6 lg:px-8 py-12">
+          <div className="max-w-7xl mx-auto">
+            <h2 className="text-2xl font-bold text-[#2c2520] mb-6">Product Description</h2>
+            {product.description && (
+              <div className="prose prose-lg max-w-none mb-8">
+                <p className="text-[#6b5d52] leading-relaxed whitespace-pre-line">
+                  {product.description}
+                </p>
+              </div>
+            )}
+
+            {/* Key Benefits */}
             {product.features && product.features.length > 0 && (
-              <div className="border-t border-gray-200 pt-6">
-                <h3 className="text-lg font-semibold text-[#2c2520] mb-4">Product Features</h3>
-                <ul className="space-y-2 text-[#6b5d52]">
+              <div className="mb-8">
+                <h3 className="text-xl font-semibold text-[#2c2520] mb-4">Key Benefits</h3>
+                <ul className="space-y-3 text-[#6b5d52]">
                   {product.features.map((feature, index) => (
-                    <li key={index} className="flex items-center space-x-2">
-                      <svg className="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                      <span>{feature}</span>
+                    <li key={index} className="flex items-start">
+                      <span className="mr-3 text-[#ba9157] font-bold">•</span>
+                      <span className="flex-1">{feature}</span>
                     </li>
                   ))}
                 </ul>
               </div>
             )}
+
           </div>
         </div>
+
+        {/* Related Products Section */}
+        {relatedProducts.length > 0 && (
+          <div className="w-full px-4 sm:px-6 lg:px-8 py-12 bg-[#f8f7f5]">
+            <div className="max-w-7xl mx-auto">
+              <div className="text-center mb-12">
+                <h2 className="text-3xl md:text-4xl font-bold text-[#2c2520] mb-4">
+                  Related Products
+                </h2>
+                <p className="text-lg text-[#6b5d52]">
+                  Discover more products from the same category
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                {relatedProducts.map((relatedProduct) => (
+                  <div key={relatedProduct.id} className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 flex flex-col h-full">
+                    {/* Product Image */}
+                    <Link href={`/products/${relatedProduct.slug || relatedProduct.id}`}>
+                      <div className="aspect-square bg-gray-100 rounded-t-lg overflow-hidden relative">
+                        {relatedProduct.image && (relatedProduct.image.startsWith('http') || relatedProduct.image.startsWith('blob:') || relatedProduct.image.startsWith('data:')) ? (
+                          <img
+                            src={relatedProduct.image}
+                            alt={relatedProduct.name}
+                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                            <svg className="w-16 h-16 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                        )}
+                      </div>
+                    </Link>
+
+                    {/* Product Info */}
+                    <div className="p-6 space-y-3 flex-grow flex flex-col">
+                      <p className="text-xs text-[#ba9157] uppercase tracking-wider">
+                        {relatedProduct.brand}
+                      </p>
+                      <h3 className="text-lg font-semibold text-[#2c2520] line-clamp-2 min-h-[3.5rem]">
+                        {relatedProduct.name}
+                      </h3>
+                      <p className="text-xl font-bold text-[#2c2520]">
+                        {relatedProduct.price}
+                      </p>
+                      <Link
+                        href={`/products/${relatedProduct.slug || relatedProduct.id}`}
+                        className="w-full border border-[#2c2520] text-[#2c2520] py-2 px-4 rounded-lg font-medium hover:bg-[#2c2520] hover:text-white transition-colors inline-block text-center mt-auto"
+                      >
+                        View Details
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </main>
 
       <Footer />

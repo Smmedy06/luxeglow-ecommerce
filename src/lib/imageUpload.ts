@@ -35,7 +35,14 @@ export async function uploadImage(
 
     if (error) {
       console.error('Upload error:', error);
-      return { url: '', error: error.message };
+      // Check if error is due to bucket not existing or permission issues
+      if (error.message.includes('Bucket') || error.message.includes('not found')) {
+        return { url: '', error: 'Storage bucket not found. Please create "product-images" bucket in Supabase Storage.' };
+      }
+      if (error.message.includes('new row violates') || error.message.includes('policy')) {
+        return { url: '', error: 'Permission denied. Please check storage policies.' };
+      }
+      return { url: '', error: error.message || 'Upload failed' };
     }
 
     if (!data) {

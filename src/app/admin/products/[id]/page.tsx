@@ -31,17 +31,18 @@ export default function AdminProductEditPage() {
     image: '',
     images: [] as string[],
     description: '',
+    short_description: '',
     in_stock: true,
     stock_count: 0,
     features: [] as string[],
     sale_price: '',
     on_sale: false,
-    sku: '',
-    weight: '',
-    dimensions: '',
     meta_title: '',
     meta_description: '',
     tags: [] as string[],
+    discount_percentage_5_9: 0,
+    discount_percentage_10_plus: 0,
+    is_featured: false,
   });
   const [featureInput, setFeatureInput] = useState('');
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -92,12 +93,13 @@ export default function AdminProductEditPage() {
           features: Array.isArray(data.features) ? data.features : [],
           sale_price: data.sale_price || '',
           on_sale: data.on_sale || false,
-          sku: data.sku || '',
-          weight: data.weight?.toString() || '',
-          dimensions: data.dimensions || '',
           meta_title: data.meta_title || '',
           meta_description: data.meta_description || '',
           tags: Array.isArray(data.tags) ? data.tags : [],
+          discount_percentage_5_9: data.discount_percentage_5_9 || 0,
+          discount_percentage_10_plus: data.discount_percentage_10_plus || 0,
+          is_featured: data.is_featured || false,
+          short_description: data.short_description || '',
         });
         setProductImages(imagesArray);
         // Clear any existing previews when loading a product
@@ -481,9 +483,10 @@ export default function AdminProductEditPage() {
         features: formData.features.length > 0 ? formData.features : null,
         sale_price: formData.sale_price || null,
         on_sale: formData.on_sale || false,
-        sku: formData.sku || null,
-        weight: formData.weight ? parseFloat(formData.weight) : null,
-        dimensions: formData.dimensions || null,
+        short_description: formData.short_description || null,
+        discount_percentage_5_9: formData.discount_percentage_5_9 || 0,
+        discount_percentage_10_plus: formData.discount_percentage_10_plus || 0,
+        is_featured: formData.is_featured || false,
         meta_title: formData.meta_title || null,
         meta_description: formData.meta_description || null,
         tags: formData.tags.length > 0 ? formData.tags : null,
@@ -867,17 +870,34 @@ export default function AdminProductEditPage() {
           )}
         </div>
 
-        {/* Description */}
+        {/* Short Description */}
+        <div>
+          <label htmlFor="short_description" className="block text-sm font-medium text-[#2c2520] mb-2">
+            Short Description
+          </label>
+          <textarea
+            id="short_description"
+            name="short_description"
+            value={formData.short_description}
+            onChange={handleChange}
+            rows={2}
+            placeholder="Brief product description (shown on product cards and top of product page)"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ba9157] focus:border-transparent outline-none"
+          />
+        </div>
+
+        {/* Long Description */}
         <div>
           <label htmlFor="description" className="block text-sm font-medium text-[#2c2520] mb-2">
-            Description
+            Long Description
           </label>
           <textarea
             id="description"
             name="description"
             value={formData.description}
             onChange={handleChange}
-            rows={4}
+            rows={6}
+            placeholder="Detailed product description (shown below short description on product page)"
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ba9157] focus:border-transparent outline-none"
           />
         </div>
@@ -980,52 +1000,69 @@ export default function AdminProductEditPage() {
           )}
         </div>
 
-        {/* Additional Fields */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="sku" className="block text-sm font-medium text-[#2c2520] mb-2">
-              SKU (Stock Keeping Unit)
-            </label>
-            <input
-              type="text"
-              id="sku"
-              name="sku"
-              value={formData.sku}
-              onChange={handleChange}
-              placeholder="PROD-001"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ba9157] focus:border-transparent outline-none"
-            />
-          </div>
-          <div>
-            <label htmlFor="weight" className="block text-sm font-medium text-[#2c2520] mb-2">
-              Weight (kg)
-            </label>
-            <input
-              type="number"
-              id="weight"
-              name="weight"
-              value={formData.weight}
-              onChange={handleChange}
-              step="0.01"
-              placeholder="0.5"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ba9157] focus:border-transparent outline-none"
-            />
-          </div>
-          <div>
-            <label htmlFor="dimensions" className="block text-sm font-medium text-[#2c2520] mb-2">
-              Dimensions (L x W x H)
-            </label>
-            <input
-              type="text"
-              id="dimensions"
-              name="dimensions"
-              value={formData.dimensions}
-              onChange={handleChange}
-              placeholder="10 x 5 x 3 cm"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ba9157] focus:border-transparent outline-none"
-            />
+        {/* Quantity Discounts */}
+        <div className="border-t border-gray-200 pt-6">
+          <h3 className="text-lg font-semibold text-[#2c2520] mb-4">Quantity Discounts</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="discount_percentage_5_9" className="block text-sm font-medium text-[#2c2520] mb-2">
+                Discount for 5-9 units (%)
+              </label>
+              <input
+                type="number"
+                id="discount_percentage_5_9"
+                name="discount_percentage_5_9"
+                value={formData.discount_percentage_5_9}
+                onChange={(e) => setFormData(prev => ({ 
+                  ...prev, 
+                  discount_percentage_5_9: parseFloat(e.target.value) || 0 
+                }))}
+                min="0"
+                max="100"
+                step="0.01"
+                placeholder="0.00"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ba9157] focus:border-transparent outline-none"
+              />
+              <p className="text-xs text-[#6b5d52] mt-1">Enter discount percentage (e.g., 5.5 for 5.5%)</p>
+            </div>
+            <div>
+              <label htmlFor="discount_percentage_10_plus" className="block text-sm font-medium text-[#2c2520] mb-2">
+                Discount for 10+ units (%)
+              </label>
+              <input
+                type="number"
+                id="discount_percentage_10_plus"
+                name="discount_percentage_10_plus"
+                value={formData.discount_percentage_10_plus}
+                onChange={(e) => setFormData(prev => ({ 
+                  ...prev, 
+                  discount_percentage_10_plus: parseFloat(e.target.value) || 0 
+                }))}
+                min="0"
+                max="100"
+                step="0.01"
+                placeholder="0.00"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ba9157] focus:border-transparent outline-none"
+              />
+              <p className="text-xs text-[#6b5d52] mt-1">Enter discount percentage (e.g., 11.1 for 11.1%)</p>
+            </div>
           </div>
         </div>
+
+        {/* Featured Product */}
+        <div className="border-t border-gray-200 pt-6">
+          <label className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              checked={formData.is_featured}
+              onChange={(e) => setFormData(prev => ({ ...prev, is_featured: e.target.checked }))}
+              className="w-4 h-4 text-[#ba9157] border-gray-300 rounded focus:ring-[#ba9157]"
+            />
+            <span className="text-sm font-medium text-[#2c2520]">Featured Product</span>
+            <span className="text-xs text-[#6b5d52]">(Will appear in the featured products carousel on the homepage)</span>
+          </label>
+        </div>
+
 
         {/* Submit Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 pt-4">

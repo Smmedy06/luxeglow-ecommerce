@@ -12,7 +12,7 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [isLoading, setIsLoading] = useState(true);
@@ -26,26 +26,39 @@ export default function AdminLayout({
         return;
       }
 
+      // Wait for auth to finish loading
+      if (authLoading) {
+        return;
+      }
+
       // Check if user is authenticated
       if (!user) {
         router.push('/admin/login');
+        setIsLoading(false);
         return;
       }
 
       // Check if user is admin
-      const adminStatus = await isAdmin();
-      setIsUserAdmin(adminStatus);
+      try {
+        const adminStatus = await isAdmin();
+        setIsUserAdmin(adminStatus);
 
-      if (!adminStatus) {
+        if (!adminStatus) {
+          router.push('/admin/login');
+          setIsLoading(false);
+          return;
+        }
+
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error checking admin status:', error);
         router.push('/admin/login');
-        return;
+        setIsLoading(false);
       }
-
-      setIsLoading(false);
     };
 
     checkAdminAccess();
-  }, [user, router, pathname]);
+  }, [user, authLoading, router, pathname]);
 
   // Show login page without admin layout
   if (pathname === '/admin/login') {

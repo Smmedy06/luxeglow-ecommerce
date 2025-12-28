@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
+import BulkUploadProducts from '@/components/BulkUploadProducts';
 
 interface Product {
   id: number;
@@ -94,6 +95,9 @@ export default function AdminProductsPage() {
           + Add New Product
         </Link>
       </div>
+
+      {/* Bulk Upload Section */}
+      <BulkUploadProducts onComplete={loadProducts} />
 
       {/* Search */}
       <div className="mb-6">

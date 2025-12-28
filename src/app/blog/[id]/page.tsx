@@ -1,206 +1,209 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
+import Image from 'next/image';
 
 interface BlogPost {
   id: number;
   title: string;
-  excerpt: string;
+  slug: string;
+  excerpt: string | null;
   content: string;
-  author: string;
-  authorImage: string;
-  publishDate: string;
-  readTime: string;
-  category: string;
-  image: string;
-  featured: boolean;
-  tags: string[];
+  featured_image: string | null;
+  category: string | null;
+  tags: string[] | null;
+  published_at: string | null;
+  created_at: string;
+  views: number;
+  author_name?: string;
 }
 
-const blogPosts: BlogPost[] = [
-  {
-    id: 1,
-    title: "The Science Behind Vitamin C: Why It's Essential for Radiant Skin",
-    excerpt: "Discover the powerful benefits of Vitamin C in skincare and how it transforms your skin's appearance.",
-    content: `Vitamin C is one of the most researched and effective ingredients in skincare, and for good reason. This powerful antioxidant offers numerous benefits that can transform your skin's appearance and health.
+// Calculate read time
+const calculateReadTime = (content: string): string => {
+  const wordsPerMinute = 200;
+  const words = content.split(/\s+/).length;
+  const minutes = Math.ceil(words / wordsPerMinute);
+  return `${minutes} min read`;
+};
 
-## What is Vitamin C?
+// Format date
+const formatDate = (dateString: string | null): string => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+};
 
-Vitamin C, also known as ascorbic acid, is a water-soluble vitamin that plays a crucial role in collagen synthesis, skin repair, and protection against environmental damage. Unlike many other vitamins, our bodies cannot produce Vitamin C naturally, so we must obtain it through diet and topical application.
-
-## Key Benefits for Your Skin
-
-### 1. Collagen Production
-Vitamin C is essential for collagen synthesis, the protein that gives skin its structure and firmness. As we age, collagen production naturally decreases, leading to fine lines and wrinkles. Topical Vitamin C can help stimulate collagen production, resulting in firmer, more youthful-looking skin.
-
-### 2. Antioxidant Protection
-Vitamin C is a powerful antioxidant that neutralizes free radicals caused by UV exposure, pollution, and other environmental stressors. This protection helps prevent premature aging and maintains skin health.
-
-### 3. Brightening and Even Skin Tone
-Vitamin C inhibits the production of melanin, helping to fade dark spots, hyperpigmentation, and uneven skin tone. Regular use can result in a brighter, more radiant complexion.
-
-### 4. Wound Healing
-Vitamin C plays a crucial role in wound healing and skin repair, making it beneficial for those with acne scars or other skin damage.
-
-## How to Choose the Right Vitamin C Product
-
-When selecting a Vitamin C product, consider these factors:
-
-- **Concentration**: Look for products containing 10-20% Vitamin C for optimal effectiveness
-- **Stability**: Choose products with stable forms of Vitamin C like L-ascorbic acid or magnesium ascorbyl phosphate
-- **Packaging**: Opt for products in opaque, airtight containers to prevent oxidation
-- **pH Level**: Effective Vitamin C products typically have a pH between 2.5-3.5
-
-## Incorporating Vitamin C into Your Routine
-
-For best results, apply Vitamin C in the morning after cleansing and before moisturizing. Always follow with sunscreen, as Vitamin C can increase sun sensitivity. Start with a lower concentration and gradually increase as your skin adjusts.
-
-## Conclusion
-
-Vitamin C is a skincare powerhouse that offers multiple benefits for healthy, radiant skin. By understanding its science and choosing the right products, you can harness its power to achieve your skincare goals.`,
-    author: "Dr. Sarah Mitchell",
-    authorImage: "author-1",
-    publishDate: "2024-01-15",
-    readTime: "5 min read",
-    category: "Skincare Science",
-    image: "blog-1",
-    featured: true,
-    tags: ["Vitamin C", "Skincare", "Anti-aging", "Science"]
-  },
-  {
-    id: 2,
-    title: "Complete Guide to Dermal Fillers: What You Need to Know",
-    excerpt: "Everything you need to know about dermal fillers, from types to aftercare tips.",
-    content: `Dermal fillers have revolutionized the aesthetics industry, offering safe and effective solutions for facial volume loss, wrinkles, and contouring. This comprehensive guide covers everything you need to know about dermal fillers.
-
-## What Are Dermal Fillers?
-
-Dermal fillers are injectable treatments that add volume to the skin, smooth wrinkles, and enhance facial features. They're made from various materials, with hyaluronic acid being the most common and safest option.
-
-## Types of Dermal Fillers
-
-### Hyaluronic Acid Fillers
-- **Most popular and safest option**
-- **Natural substance found in the body**
-- **Reversible with hyaluronidase**
-- **Lasts 6-18 months**
-
-### Calcium Hydroxyapatite Fillers
-- **Longer-lasting results**
-- **Stimulates collagen production**
-- **Best for deeper wrinkles**
-- **Lasts 12-18 months**
-
-### Poly-L-lactic Acid Fillers
-- **Stimulates collagen over time**
-- **Gradual, natural-looking results**
-- **Lasts up to 2 years**
-
-## Common Treatment Areas
-
-### Lips
-- **Lip augmentation**
-- **Lip line smoothing**
-- **Lip shape correction**
-
-### Cheeks
-- **Cheekbone enhancement**
-- **Volume restoration**
-- **Facial contouring**
-
-### Under Eyes
-- **Tear trough correction**
-- **Dark circle improvement**
-- **Eye bag reduction**
-
-### Nasolabial Folds
-- **Smile line smoothing**
-- **Marionette line correction**
-
-## The Treatment Process
-
-### Consultation
-Your practitioner will assess your facial structure, discuss your goals, and recommend the best treatment plan.
-
-### Preparation
-The treatment area is cleaned and may be numbed with topical anesthetic.
-
-### Injection
-The filler is carefully injected using fine needles or cannulas.
-
-### Aftercare
-You'll receive specific instructions for optimal results and minimal downtime.
-
-## Recovery and Results
-
-Most patients experience minimal downtime with hyaluronic acid fillers. You may have slight swelling or bruising for a few days. Results are immediate and continue to improve over the following weeks.
-
-## Safety Considerations
-
-Dermal fillers are generally safe when administered by qualified professionals. Choose practitioners with proper training and certification. Always discuss your medical history and any medications you're taking.
-
-## Conclusion
-
-Dermal fillers offer a safe and effective way to enhance your natural beauty. With proper research and professional treatment, you can achieve beautiful, natural-looking results that boost your confidence.`,
-    author: "Dr. Emily Chen",
-    authorImage: "author-2",
-    publishDate: "2024-01-12",
-    readTime: "8 min read",
-    category: "Aesthetics",
-    image: "blog-2",
-    featured: true,
-    tags: ["Dermal Fillers", "Aesthetics", "Beauty", "Treatment"]
-  }
-];
+// Parse markdown-like content
+const parseContent = (content: string) => {
+  return content.split('\n').map((paragraph, index) => {
+    if (paragraph.startsWith('# ')) {
+      return (
+        <h1 key={index} className="text-3xl font-bold text-[#2c2520] mb-6 mt-8">
+          {paragraph.replace('# ', '')}
+        </h1>
+      );
+    } else if (paragraph.startsWith('## ')) {
+      return (
+        <h2 key={index} className="text-2xl font-bold text-[#2c2520] mb-4 mt-6">
+          {paragraph.replace('## ', '')}
+        </h2>
+      );
+    } else if (paragraph.startsWith('### ')) {
+      return (
+        <h3 key={index} className="text-xl font-semibold text-[#2c2520] mb-3 mt-5">
+          {paragraph.replace('### ', '')}
+        </h3>
+      );
+    } else if (paragraph.startsWith('- ') || paragraph.startsWith('* ')) {
+      return (
+        <li key={index} className="mb-2 ml-6 list-disc">
+          {paragraph.replace(/^[-*] /, '')}
+        </li>
+      );
+    } else if (paragraph.trim() === '') {
+      return <br key={index} />;
+    } else {
+      return (
+        <p key={index} className="mb-4 text-[#6b5d52] leading-relaxed">
+          {paragraph}
+        </p>
+      );
+    }
+  });
+};
 
 export default function BlogPostPage() {
   const params = useParams();
+  const router = useRouter();
   const [post, setPost] = useState<BlogPost | null>(null);
+  const [relatedPosts, setRelatedPosts] = useState<BlogPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const postId = parseInt(params.id as string);
-    const foundPost = blogPosts.find(p => p.id === postId);
-    
-    if (foundPost) {
-      setPost(foundPost);
-    } else {
-      // Generate a fallback post for any ID
-      setPost({
-        id: postId,
-        title: `Blog Post ${postId}`,
-        excerpt: "This is a sample blog post about skincare and beauty.",
-        content: `# Welcome to Our Blog
-
-This is a sample blog post about skincare and beauty. In a real application, this content would be dynamically loaded from a CMS or database.
-
-## Key Points
-
-- Professional skincare advice
-- Latest beauty trends
-- Expert insights and tips
-- Product recommendations
-
-## Conclusion
-
-Thank you for reading our blog. We hope you found this information helpful for your skincare journey.`,
-        author: "LuxeGlow Team",
-        authorImage: "author-default",
-        publishDate: "2024-01-01",
-        readTime: "3 min read",
-        category: "General",
-        image: "blog-default",
-        featured: false,
-        tags: ["Skincare", "Beauty", "Tips"]
-      });
+    if (params.id) {
+      loadBlogPost(params.id as string);
     }
-    
-    setIsLoading(false);
   }, [params.id]);
+
+  const loadBlogPost = async (idOrSlug: string) => {
+    setIsLoading(true);
+    try {
+      // Try to find by slug first, then by ID
+      const isNumeric = !isNaN(Number(idOrSlug));
+      
+      let query = supabase
+        .from('blogs')
+        .select('*')
+        .eq('is_published', true);
+
+      if (isNumeric) {
+        query = query.eq('id', parseInt(idOrSlug));
+      } else {
+        query = query.eq('slug', idOrSlug);
+      }
+
+      const { data, error } = await query.single();
+
+      if (error || !data) {
+        console.error('Error loading blog post:', error);
+        setIsLoading(false);
+        return;
+      }
+
+      // Get author name from user_profiles if available
+      let authorName = 'LuxeGlow Team';
+      if (data.author_id) {
+        const { data: profile } = await supabase
+          .from('user_profiles')
+          .select('full_name')
+          .eq('user_id', data.author_id)
+          .single();
+        
+        if (profile?.full_name) {
+          authorName = profile.full_name;
+        }
+      }
+
+      const blogPost: BlogPost = {
+        id: data.id,
+        title: data.title,
+        slug: data.slug,
+        excerpt: data.excerpt,
+        content: data.content,
+        featured_image: data.featured_image,
+        category: data.category,
+        tags: data.tags || [],
+        published_at: data.published_at,
+        created_at: data.created_at,
+        views: data.views || 0,
+        author_name: authorName,
+      };
+
+      setPost(blogPost);
+
+      // Increment view count
+      await supabase
+        .from('blogs')
+        .update({ views: (data.views || 0) + 1 })
+        .eq('id', data.id);
+
+      // Load related posts (same category, excluding current post)
+      if (data.category) {
+        const { data: relatedData } = await supabase
+          .from('blogs')
+          .select('*')
+          .eq('is_published', true)
+          .eq('category', data.category)
+          .neq('id', data.id)
+          .order('published_at', { ascending: false, nullsFirst: false })
+          .limit(2);
+
+        if (relatedData) {
+          // Fetch author names for related posts
+          const authorIds = relatedData.map(b => b.author_id).filter(Boolean);
+          const { data: profiles } = await supabase
+            .from('user_profiles')
+            .select('user_id, full_name')
+            .in('user_id', authorIds);
+
+          const profilesMap = new Map(profiles?.map(p => [p.user_id, p.full_name]) || []);
+
+          const transformedRelated: BlogPost[] = relatedData.map((blog: any) => {
+            let relatedAuthorName = 'LuxeGlow Team';
+            if (blog.author_id && profilesMap.has(blog.author_id)) {
+              relatedAuthorName = profilesMap.get(blog.author_id) || 'LuxeGlow Team';
+            }
+
+            return {
+              id: blog.id,
+              title: blog.title,
+              slug: blog.slug,
+              excerpt: blog.excerpt,
+              content: blog.content,
+              featured_image: blog.featured_image,
+              category: blog.category,
+              tags: blog.tags || [],
+              published_at: blog.published_at,
+              created_at: blog.created_at,
+              views: blog.views || 0,
+              author_name: relatedAuthorName,
+            };
+          });
+
+          setRelatedPosts(transformedRelated);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading blog post:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -257,42 +260,55 @@ Thank you for reading our blog. We hope you found this information helpful for y
 
         {/* Article Header */}
         <header className="mb-8">
-          <div className="mb-4">
-            <span className="bg-[#ba9157] text-white px-3 py-1 rounded-full text-sm font-medium">
-              {post.category}
-            </span>
-          </div>
+          {post.category && (
+            <div className="mb-4">
+              <span className="bg-[#ba9157] text-white px-3 py-1 rounded-full text-sm font-medium">
+                {post.category}
+              </span>
+            </div>
+          )}
           <h1 className="text-3xl md:text-4xl font-bold text-[#2c2520] mb-4 leading-tight">
             {post.title}
           </h1>
-          <p className="text-xl text-[#6b5d52] mb-6 leading-relaxed">
-            {post.excerpt}
-          </p>
+          {post.excerpt && (
+            <p className="text-xl text-[#6b5d52] mb-6 leading-relaxed">
+              {post.excerpt}
+            </p>
+          )}
           
           {/* Author Info */}
           <div className="flex items-center justify-between border-b border-gray-200 pb-6">
             <div className="flex items-center space-x-4">
               <div className="w-12 h-12 bg-[#ba9157] rounded-full flex items-center justify-center">
                 <span className="text-white font-semibold">
-                  {post.author.split(' ').map(n => n[0]).join('')}
+                  {post.author_name?.split(' ').map(n => n[0]).join('') || 'LG'}
                 </span>
               </div>
               <div>
-                <p className="font-semibold text-[#2c2520]">{post.author}</p>
-                <p className="text-sm text-[#6b5d52]">{post.publishDate} • {post.readTime}</p>
+                <p className="font-semibold text-[#2c2520]">{post.author_name}</p>
+                <p className="text-sm text-[#6b5d52]">
+                  {formatDate(post.published_at || post.created_at)} • {calculateReadTime(post.content)}
+                </p>
               </div>
             </div>
             
             {/* Share Buttons */}
             <div className="flex items-center space-x-3">
-              <button className="p-2 text-[#6b5d52] hover:text-[#ba9157] transition-colors">
+              <button 
+                onClick={() => {
+                  if (navigator.share) {
+                    navigator.share({
+                      title: post.title,
+                      text: post.excerpt || '',
+                      url: window.location.href,
+                    });
+                  }
+                }}
+                className="p-2 text-[#6b5d52] hover:text-[#ba9157] transition-colors"
+                aria-label="Share article"
+              >
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/>
-                </svg>
-              </button>
-              <button className="p-2 text-[#6b5d52] hover:text-[#ba9157] transition-colors">
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"/>
                 </svg>
               </button>
             </div>
@@ -300,95 +316,73 @@ Thank you for reading our blog. We hope you found this information helpful for y
         </header>
 
         {/* Article Image */}
-        <div className="mb-8">
-          <div className="aspect-video bg-gradient-to-br from-[#ba9157] to-[#a67d4a] rounded-xl flex items-center justify-center">
-            <div className="text-center text-white">
-              <svg className="w-20 h-20 mx-auto mb-4 opacity-80" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-              </svg>
-              <p className="text-lg font-medium">Article Image</p>
+        {post.featured_image && (
+          <div className="mb-8">
+            <div className="aspect-video relative rounded-xl overflow-hidden">
+              {post.featured_image.startsWith('http') || post.featured_image.startsWith('/') ? (
+                <Image
+                  src={post.featured_image}
+                  alt={post.title}
+                  fill
+                  className="object-cover"
+                  unoptimized={post.featured_image.startsWith('http')}
+                />
+              ) : (
+                <img
+                  src={post.featured_image}
+                  alt={post.title}
+                  className="w-full h-full object-cover"
+                />
+              )}
             </div>
           </div>
-        </div>
+        )}
 
         {/* Article Content */}
         <article className="prose prose-lg max-w-none">
           <div className="text-[#2c2520] leading-relaxed">
-            {post.content.split('\n').map((paragraph, index) => {
-              if (paragraph.startsWith('# ')) {
-                return (
-                  <h1 key={index} className="text-3xl font-bold text-[#2c2520] mb-6 mt-8">
-                    {paragraph.replace('# ', '')}
-                  </h1>
-                );
-              } else if (paragraph.startsWith('## ')) {
-                return (
-                  <h2 key={index} className="text-2xl font-bold text-[#2c2520] mb-4 mt-6">
-                    {paragraph.replace('## ', '')}
-                  </h2>
-                );
-              } else if (paragraph.startsWith('### ')) {
-                return (
-                  <h3 key={index} className="text-xl font-semibold text-[#2c2520] mb-3 mt-5">
-                    {paragraph.replace('### ', '')}
-                  </h3>
-                );
-              } else if (paragraph.startsWith('- ')) {
-                return (
-                  <li key={index} className="mb-2">
-                    {paragraph.replace('- ', '')}
-                  </li>
-                );
-              } else if (paragraph.trim() === '') {
-                return <br key={index} />;
-              } else {
-                return (
-                  <p key={index} className="mb-4">
-                    {paragraph}
-                  </p>
-                );
-              }
-            })}
+            {parseContent(post.content)}
           </div>
         </article>
 
         {/* Tags */}
-        <div className="mt-8 pt-6 border-t border-gray-200">
-          <h3 className="text-sm font-semibold text-[#2c2520] mb-3">Tags</h3>
-          <div className="flex flex-wrap gap-2">
-            {post.tags.map((tag) => (
-              <span key={tag} className="bg-gray-100 text-[#6b5d52] px-3 py-1 rounded-full text-sm">
-                {tag}
-              </span>
-            ))}
+        {post.tags && post.tags.length > 0 && (
+          <div className="mt-8 pt-6 border-t border-gray-200">
+            <h3 className="text-sm font-semibold text-[#2c2520] mb-3">Tags</h3>
+            <div className="flex flex-wrap gap-2">
+              {post.tags.map((tag) => (
+                <span key={tag} className="bg-gray-100 text-[#6b5d52] px-3 py-1 rounded-full text-sm">
+                  {tag}
+                </span>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Related Posts */}
-        <section className="mt-12 pt-8 border-t border-gray-200">
-          <h2 className="text-2xl font-bold text-[#2c2520] mb-6">Related Articles</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {blogPosts
-              .filter(p => p.id !== post.id && p.category === post.category)
-              .slice(0, 2)
-              .map((relatedPost) => (
-                <Link key={relatedPost.id} href={`/blog/${relatedPost.id}`} className="group">
+        {relatedPosts.length > 0 && (
+          <section className="mt-12 pt-8 border-t border-gray-200">
+            <h2 className="text-2xl font-bold text-[#2c2520] mb-6">Related Articles</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {relatedPosts.map((relatedPost) => (
+                <Link key={relatedPost.id} href={`/blog/${relatedPost.slug || relatedPost.id}`} className="group">
                   <div className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
                     <h3 className="text-lg font-semibold text-[#2c2520] group-hover:text-[#ba9157] transition-colors mb-2">
                       {relatedPost.title}
                     </h3>
                     <p className="text-[#6b5d52] text-sm mb-3">
-                      {relatedPost.excerpt}
+                      {relatedPost.excerpt || relatedPost.content.substring(0, 120) + '...'}
                     </p>
                     <div className="flex items-center justify-between text-xs text-[#6b5d52]">
-                      <span>{relatedPost.readTime}</span>
-                      <span>{relatedPost.publishDate}</span>
+                      <span>{calculateReadTime(relatedPost.content)}</span>
+                      <span>{formatDate(relatedPost.published_at || relatedPost.created_at)}</span>
                     </div>
                   </div>
                 </Link>
               ))}
-          </div>
-        </section>
+            </div>
+          </section>
+        )}
 
         {/* Back to Blog */}
         <div className="mt-8 text-center">

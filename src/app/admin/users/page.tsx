@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { setUserAsAdmin } from '@/lib/admin';
 
@@ -204,8 +204,8 @@ export default function AdminUsersPage() {
                 </tr>
               ) : (
                 filteredUsers.map((user) => (
-                  <>
-                    <tr key={user.id} className="hover:bg-gray-50">
+                  <React.Fragment key={user.id}>
+                    <tr className="hover:bg-gray-50">
                       <td className="px-4 md:px-6 py-4 whitespace-nowrap text-sm font-medium text-[#2c2520]">
                         <div>
                           <div>{user.full_name}</div>
@@ -295,7 +295,7 @@ export default function AdminUsersPage() {
                         </td>
                       </tr>
                     )}
-                  </>
+                  </React.Fragment>
                 ))
               )}
             </tbody>

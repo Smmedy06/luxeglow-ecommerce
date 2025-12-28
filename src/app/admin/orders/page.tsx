@@ -65,6 +65,27 @@ export default function AdminOrdersPage() {
     loadOrders();
   }, [loadOrders]);
 
+  // Close modal on ESC key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && selectedOrder) {
+        setSelectedOrder(null);
+        setOrderItems([]);
+      }
+    };
+
+    if (selectedOrder) {
+      document.addEventListener('keydown', handleEscape);
+      // Prevent body scroll when modal is open
+      document.body.style.overflow = 'hidden';
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'unset';
+    };
+  }, [selectedOrder]);
+
   const loadOrderItems = async (orderId: string) => {
     try {
       const { data, error } = await supabase
@@ -188,12 +209,10 @@ export default function AdminOrdersPage() {
         </select>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Orders List */}
-        <div className={`lg:col-span-2 ${selectedOrder ? 'hidden lg:block' : ''}`}>
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
+      {/* Orders List - Always Full Width */}
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="overflow-x-auto max-w-full">
+          <table className="w-full min-w-[600px]">
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-[#6b5d52] uppercase">Order #</th>
@@ -250,28 +269,43 @@ export default function AdminOrdersPage() {
               </table>
             </div>
           </div>
-        </div>
 
-        {/* Order Details Sidebar */}
-        {selectedOrder && (
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow p-4 md:p-6 sticky top-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-[#2c2520]">Order Details</h2>
+      {/* Order Details Modal */}
+      {selectedOrder && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity duration-200"
+            onClick={() => {
+              setSelectedOrder(null);
+              setOrderItems([]);
+            }}
+          />
+          
+          {/* Modal */}
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div
+              className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col transform transition-all duration-200 scale-100"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="sticky top-0 bg-white border-b border-gray-200 px-4 md:px-6 py-4 flex items-center justify-between z-10">
+                <h2 className="text-xl font-semibold text-[#2c2520]">Order Details</h2>
                 <button
                   onClick={() => {
                     setSelectedOrder(null);
                     setOrderItems([]);
                   }}
-                  className="lg:hidden text-gray-400 hover:text-gray-600"
+                  className="text-gray-400 hover:text-gray-600 transition-colors p-1 hover:bg-gray-100 rounded-full"
+                  aria-label="Close modal"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
-
-              <div className="space-y-4">
+              
+              <div className="p-4 md:p-6 overflow-y-auto flex-1">
+                <div className="space-y-4">
                 <div>
                   <p className="text-sm text-[#6b5d52]">Order Number</p>
                   <p className="font-medium text-[#2c2520]">{selectedOrder.order_number}</p>
@@ -341,11 +375,12 @@ export default function AdminOrdersPage() {
                     </div>
                   </div>
                 )}
+                </div>
               </div>
             </div>
           </div>
-        )}
-      </div>
+        </>
+      )}
     </div>
   );
 }

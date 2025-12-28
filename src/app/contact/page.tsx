@@ -138,7 +138,7 @@ export default function ContactPage() {
               </div>
 
               {/* Right Column - Contact Form */}
-              <div className="bg-blue-100 rounded-lg p-8 shadow-lg border-2 border-black">
+              <div className="bg-[#F8F7F5] rounded-lg p-8 shadow-lg">
                 <h2 className="text-2xl md:text-3xl font-semibold text-[#2c2520] mb-4">
                   Send Us a Message
                 </h2>
@@ -158,7 +158,7 @@ export default function ContactPage() {
                       value={formData.name}
                       onChange={handleInputChange}
                       placeholder="John Doe"
-                      className="w-full px-4 py-3 border-2 border-black rounded-lg focus:ring-2 focus:ring-[#ba9157] focus:border-transparent outline-none transition-colors bg-white"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ba9157] focus:border-[#ba9157] outline-none transition-colors bg-white"
                       required
                     />
                   </div>
@@ -174,7 +174,7 @@ export default function ContactPage() {
                       value={formData.email}
                       onChange={handleInputChange}
                       placeholder="john@example.com"
-                      className="w-full px-4 py-3 border-2 border-black rounded-lg focus:ring-2 focus:ring-[#ba9157] focus:border-transparent outline-none transition-colors bg-white"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ba9157] focus:border-[#ba9157] outline-none transition-colors bg-white"
                       required
                     />
                   </div>
@@ -190,7 +190,7 @@ export default function ContactPage() {
                       value={formData.subject}
                       onChange={handleInputChange}
                       placeholder="How can we help you?"
-                      className="w-full px-4 py-3 border-2 border-black rounded-lg focus:ring-2 focus:ring-[#ba9157] focus:border-transparent outline-none transition-colors bg-white"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ba9157] focus:border-[#ba9157] outline-none transition-colors bg-white"
                       required
                     />
                   </div>
@@ -206,7 +206,7 @@ export default function ContactPage() {
                       onChange={handleInputChange}
                       placeholder="Tell us more about your inquiry..."
                       rows={5}
-                      className="w-full px-4 py-3 border-2 border-black rounded-lg focus:ring-2 focus:ring-[#ba9157] focus:border-transparent outline-none transition-colors bg-white resize-none"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ba9157] focus:border-[#ba9157] outline-none transition-colors bg-white resize-none"
                       required
                     />
                   </div>
@@ -224,7 +224,7 @@ export default function ContactPage() {
         </section>
 
         {/* Feature/Benefit Section */}
-        <section className="py-20 bg-blue-100">
+        <section className="py-20 bg-[#F8F7F5]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className="text-center">
