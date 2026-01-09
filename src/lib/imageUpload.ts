@@ -25,9 +25,12 @@ export async function uploadImage(
 
     console.log('Uploading image:', { fileName, filePath, size: file.size });
 
+    // Determine bucket based on folder
+    const bucketName = folder === 'blogs' ? 'product-images' : 'product-images'; // Use same bucket for now
+    
     // Upload to Supabase Storage
     const { data, error } = await supabase.storage
-      .from('product-images')
+      .from(bucketName)
       .upload(filePath, file, {
         cacheControl: '3600',
         upsert: false
@@ -37,7 +40,7 @@ export async function uploadImage(
       console.error('Upload error:', error);
       // Check if error is due to bucket not existing or permission issues
       if (error.message.includes('Bucket') || error.message.includes('not found')) {
-        return { url: '', error: 'Storage bucket not found. Please create "product-images" bucket in Supabase Storage.' };
+        return { url: '', error: `Storage bucket not found. Please create "${bucketName}" bucket in Supabase Storage.` };
       }
       if (error.message.includes('new row violates') || error.message.includes('policy')) {
         return { url: '', error: 'Permission denied. Please check storage policies.' };
@@ -52,7 +55,7 @@ export async function uploadImage(
 
     // Get public URL
     const { data: { publicUrl } } = supabase.storage
-      .from('product-images')
+      .from(bucketName)
       .getPublicUrl(filePath);
 
     console.log('Image uploaded successfully:', publicUrl);

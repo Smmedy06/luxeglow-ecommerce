@@ -27,29 +27,94 @@ export default function CartPage() {
     }
   };
 
-  const handleApplyPromoCode = () => {
+  const handleApplyPromoCode = async () => {
     setPromoError('');
-    
-    // Sample promo codes for demonstration
-    const validPromoCodes = {
-      'WELCOME10': 0.1, // 10% discount
-      'SAVE20': 0.2,    // 20% discount
-      'FIRST15': 0.15,  // 15% discount
-      'LUXE25': 0.25    // 25% discount
-    };
-
     const code = promoCode.toUpperCase().trim();
     
-    if (validPromoCodes[code as keyof typeof validPromoCodes]) {
-      const discountRate = validPromoCodes[code as keyof typeof validPromoCodes];
+    if (!code) {
+      setPromoError('Please enter a promo code');
+      return;
+    }
+
+    try {
+      // Fetch promo code from database
+      const { data: promoCodeData, error } = await supabase
+        .from('promo_codes')
+        .select('*')
+        .eq('code', code)
+        .eq('is_active', true)
+        .single();
+
+      if (error || !promoCodeData) {
+        setPromoError('Invalid promo code. Please try again.');
+        return;
+      }
+
+      // Check if code is expired
+      if (promoCodeData.valid_until && new Date(promoCodeData.valid_until) < new Date()) {
+        setPromoError('This promo code has expired.');
+        return;
+      }
+
+      // Check if code is not yet valid
+      if (new Date(promoCodeData.valid_from) > new Date()) {
+        setPromoError('This promo code is not yet valid.');
+        return;
+      }
+
+      // Check if usage limit is exhausted
+      if (promoCodeData.usage_limit && promoCodeData.usage_count >= promoCodeData.usage_limit) {
+        setPromoError('This promo code has reached its usage limit.');
+        return;
+      }
+
+      // Check user usage limit if user is logged in
+      if (user) {
+        const { data: userUsage } = await supabase
+          .from('promo_code_usage')
+          .select('*')
+          .eq('promo_code_id', promoCodeData.id)
+          .eq('user_id', user.id);
+
+        if (userUsage && userUsage.length >= promoCodeData.user_usage_limit) {
+          setPromoError('You have already used this promo code the maximum number of times.');
+          return;
+        }
+      }
+
+      // Check minimum purchase amount
       const subtotal = getTotalPrice();
-      const discount = subtotal * discountRate;
+      if (promoCodeData.min_purchase_amount && subtotal < promoCodeData.min_purchase_amount) {
+        setPromoError(`Minimum purchase amount of £${promoCodeData.min_purchase_amount.toFixed(2)} required.`);
+        return;
+      }
+
+      // Calculate discount
+      let discount = 0;
       
+      if (promoCodeData.discount_percentage > 0) {
+        discount = subtotal * (promoCodeData.discount_percentage / 100);
+      }
+      
+      if (promoCodeData.discount_amount && promoCodeData.discount_amount > 0) {
+        // Use the larger of percentage or fixed amount
+        discount = Math.max(discount, promoCodeData.discount_amount);
+      }
+
+      // Apply maximum discount limit if set
+      if (promoCodeData.max_discount_amount && discount > promoCodeData.max_discount_amount) {
+        discount = promoCodeData.max_discount_amount;
+      }
+
+      // Ensure discount doesn't exceed subtotal
+      discount = Math.min(discount, subtotal);
+
       setAppliedPromoCode(code);
       setDiscountAmount(discount);
       setPromoCode('');
-    } else {
-      setPromoError('Invalid promo code. Please try again.');
+    } catch (error) {
+      console.error('Error applying promo code:', error);
+      setPromoError('Failed to apply promo code. Please try again.');
     }
   };
 
@@ -95,6 +160,20 @@ export default function CartPage() {
 
       // Generate order number
       const orderNumber = `LG-${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getDate()).padStart(2, '0')}-${String(Date.now()).slice(-3)}`;
+
+      // Get promo code ID if a code was applied
+      let promoCodeId = null;
+      if (appliedPromoCode) {
+        const { data: promoCodeData } = await supabase
+          .from('promo_codes')
+          .select('id')
+          .eq('code', appliedPromoCode)
+          .single();
+        
+        if (promoCodeData) {
+          promoCodeId = promoCodeData.id;
+        }
+      }
 
       // Create order
       const { data: order, error: orderError } = await supabase
@@ -145,6 +224,28 @@ export default function CartPage() {
         alert('Failed to create order items. Please contact support.');
         setIsCheckingOut(false);
         return;
+      }
+
+      // Record promo code usage if a code was applied
+      if (promoCodeId && order) {
+        // Insert usage record
+        await supabase
+          .from('promo_code_usage')
+          .insert({
+            promo_code_id: promoCodeId,
+            user_id: user.id,
+            order_id: order.id,
+          });
+
+        // Increment usage count using RPC function
+        const { error: incrementError } = await supabase.rpc('increment_promo_code_usage', {
+          promo_code_id: promoCodeId,
+        });
+
+        if (incrementError) {
+          console.error('Error incrementing promo code usage:', incrementError);
+          // Don't fail the order if this fails, just log it
+        }
       }
 
       // Clear cart

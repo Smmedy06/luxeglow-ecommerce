@@ -50,7 +50,7 @@ export default function BlogPage() {
   const loadBlogs = async () => {
     setIsLoading(true);
     try {
-      // Fetch published blogs
+      // Fetch published blogs from Supabase
       const { data, error } = await supabase
         .from('blogs')
         .select('*')
@@ -59,8 +59,13 @@ export default function BlogPage() {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error loading blogs:', error);
-      } else if (data) {
+        console.error('Error loading blogs from Supabase:', error);
+        // Set empty array on error to show empty state
+        setBlogPosts([]);
+        return;
+      }
+
+      if (data && data.length > 0) {
         interface SupabaseBlog {
           id: number;
           title: string;
@@ -123,9 +128,14 @@ export default function BlogPage() {
         });
 
         setBlogPosts(transformedPosts);
+      } else {
+        // No blogs found in database
+        setBlogPosts([]);
       }
     } catch (error) {
       console.error('Error loading blogs:', error);
+      // Set empty array on error
+      setBlogPosts([]);
     } finally {
       setIsLoading(false);
     }

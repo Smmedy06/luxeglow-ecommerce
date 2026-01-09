@@ -108,7 +108,7 @@ export default function BlogPostPage() {
   const loadBlogPost = async (idOrSlug: string) => {
     setIsLoading(true);
     try {
-      // Try to find by slug first, then by ID
+      // Fetch blog post from Supabase by slug or ID
       const isNumeric = !isNaN(Number(idOrSlug));
       
       let query = supabase
@@ -124,8 +124,16 @@ export default function BlogPostPage() {
 
       const { data, error } = await query.single();
 
-      if (error || !data) {
-        console.error('Error loading blog post:', error);
+      if (error) {
+        console.error('Error loading blog post from Supabase:', error);
+        setPost(null);
+        setIsLoading(false);
+        return;
+      }
+
+      if (!data) {
+        console.error('Blog post not found');
+        setPost(null);
         setIsLoading(false);
         return;
       }
@@ -167,9 +175,9 @@ export default function BlogPostPage() {
         .update({ views: (data.views || 0) + 1 })
         .eq('id', data.id);
 
-      // Load related posts (same category, excluding current post)
+      // Load related posts from Supabase (same category, excluding current post)
       if (data.category) {
-        const { data: relatedData } = await supabase
+        const { data: relatedData, error: relatedError } = await supabase
           .from('blogs')
           .select('*')
           .eq('is_published', true)
@@ -178,7 +186,10 @@ export default function BlogPostPage() {
           .order('published_at', { ascending: false, nullsFirst: false })
           .limit(2);
 
-        if (relatedData) {
+        if (relatedError) {
+          console.error('Error loading related posts:', relatedError);
+          setRelatedPosts([]);
+        } else if (relatedData && relatedData.length > 0) {
           // Fetch author names for related posts
           const authorIds = relatedData.map(b => b.author_id).filter(Boolean);
           const { data: profiles } = await supabase
@@ -211,10 +222,16 @@ export default function BlogPostPage() {
           });
 
           setRelatedPosts(transformedRelated);
+        } else {
+          setRelatedPosts([]);
         }
+      } else {
+        setRelatedPosts([]);
       }
     } catch (error) {
       console.error('Error loading blog post:', error);
+      setPost(null);
+      setRelatedPosts([]);
     } finally {
       setIsLoading(false);
     }

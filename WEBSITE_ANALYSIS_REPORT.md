@@ -64,52 +64,8 @@ This report identifies all missing features, incomplete implementations, and are
   - Admin approval workflow
   - Vendor dashboard
 
-### 6. **Newsletter Signup**
-**Status:** ⚠️ UI ONLY, NO FUNCTIONALITY
-- Newsletter signup form exists on blog page
-- **BUT:** No form submission handler, no email list integration
-- **Location:** `src/app/blog/page.tsx` (line 323-332)
-- **Required:** Integrate with email marketing service (Mailchimp, ConvertKit, etc.)
 
-### 7. **Promo Code System**
-**Status:** ⚠️ HARDCODED CODES
-- Promo code functionality exists in cart
-- **BUT:** Codes are hardcoded in JavaScript (`WELCOME10`, `SAVE20`, etc.)
-- No database table for promo codes
-- No admin interface to manage codes
-- No expiration dates, usage limits, or conditions
-- **Location:** `src/app/cart/page.tsx` (line 34-39)
-- **Required:** Create `promo_codes` table and admin management
 
-### 8. **Product Reviews & Ratings**
-**Status:** ❌ NOT IMPLEMENTED
-- No review/rating system
-- No customer feedback on products
-- **Required:** 
-  - Create `product_reviews` table
-  - Add review form on product pages
-  - Display reviews and average ratings
-  - Admin moderation
-
-### 9. **Wishlist/Favorites**
-**Status:** ❌ NOT IMPLEMENTED
-- No wishlist functionality
-- Users cannot save favorite products
-- **Required:** 
-  - Create `wishlists` table
-  - Add "Add to Wishlist" button
-  - Wishlist page in user profile
-
-### 10. **Order Tracking**
-**Status:** ⚠️ FIELD EXISTS, NO FUNCTIONALITY
-- Orders table has `tracking_number` field
-- Admin can add tracking numbers
-- **BUT:** No tracking page for customers
-- No integration with shipping carriers
-- **Required:** 
-  - Create `/orders/[id]/track` page
-  - Integrate with shipping APIs (if applicable)
-  - Email tracking updates
 
 ---
 

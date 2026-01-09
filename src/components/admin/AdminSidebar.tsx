@@ -16,6 +16,7 @@ export default function AdminSidebar() {
     { name: 'Blogs', href: '/admin/blogs', icon: '📝' },
     { name: 'Categories', href: '/admin/categories', icon: '🏷️' },
     { name: 'Brands', href: '/admin/brands', icon: '🏢' },
+    { name: 'Promo Codes', href: '/admin/promo-codes', icon: '🎟️' },
   ];
 
   return (
